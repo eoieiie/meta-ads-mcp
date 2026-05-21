@@ -122,10 +122,13 @@ async function loadLifecycleMetrics(client: MetaReadOnlyClient, adAccountId: str
 
   const mediaInsights = mediaId ? await client.getInstagramMediaInsights(mediaId) : null;
 
+  const totalVisits = allMax.reduce((sum, m) => sum + (m.instagramProfileVisits ?? 0), 0);
+
   return {
     name: ad.name,
     spendKrw: totalSpend,
-    profileVisits: mediaInsights?.profileVisits ?? allMax[0].instagramProfileVisits ?? 0,
+    // 광고 단위 방문을 합산 (Media Insights.profileVisits는 유기 방문만 반영)
+    profileVisits: totalVisits,
     follows: mediaInsights?.follows ?? 0,
     saves: totalSaves,
     shares: totalShares
