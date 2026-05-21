@@ -5,7 +5,7 @@ import { reviewCardNews, scoreCardNews } from "../src/scoring.js";
 test("scores card-news metrics with follow weight over spend", () => {
   const scored = scoreCardNews({ name: "빛", spendKrw: 19354, profileVisits: 248, follows: 32 });
 
-  assert.equal(scored.score.toFixed(4), "0.0327");
+  assert.equal(scored.score.toFixed(2), "3.27");
   assert.equal(scored.conversionRate.toFixed(3), "0.129");
 });
 

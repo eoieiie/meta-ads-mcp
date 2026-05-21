@@ -17,7 +17,7 @@ export function scoreCardNews(metrics: CardNewsMetrics, options: ScoringOptions 
   const minVisits = options.minVisits ?? DEFAULT_MIN_VISITS;
   const conversionRate = metrics.profileVisits === 0 ? 0 : metrics.follows / metrics.profileVisits;
   const weightedValue = metrics.profileVisits + metrics.follows * followWeight;
-  const score = metrics.spendKrw === 0 ? 0 : weightedValue / metrics.spendKrw;
+  const score = metrics.spendKrw === 0 ? 0 : (weightedValue / metrics.spendKrw) * 100;
 
   return {
     ...metrics,

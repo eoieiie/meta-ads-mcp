@@ -87,7 +87,7 @@ function won(value: number): string {
 }
 
 function formatScore(value: number): string {
-  return value.toFixed(4);
+  return value.toFixed(2);
 }
 
 function section(text: string): Record<string, unknown> {

@@ -38,7 +38,7 @@ export function renderAutoCardNewsReview(autoReview: AutoCardNewsReview): string
 
 function renderScoredLine(label: string, item: ScoredCardNews): string {
   const costPerFollow = item.costPerFollowKrw === null ? "N/A" : `${Math.round(item.costPerFollowKrw).toLocaleString("ko-KR")}원`;
-  return `- ${label}(${item.name}): 점수 ${item.score.toFixed(4)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${formatWon(item.spendKrw)}, 저장 ${item.saves ?? 0}, 공유 ${item.shares ?? 0}`;
+  return `- ${label}(${item.name}): 점수 ${item.score.toFixed(2)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${formatWon(item.spendKrw)}, 저장 ${item.saves ?? 0}, 공유 ${item.shares ?? 0}`;
 }
 
 function formatWon(value: number): string {
