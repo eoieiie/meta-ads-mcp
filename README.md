@@ -1,4 +1,4 @@
-# Meta Ads Read-only MCP
+# Meta Ads Read-only MCP, ux관리 똑바로 해라 메타야..
 
 Read-only MCP server for reviewing Meta Ads card-news performance. It reads Meta metrics, calculates a follower-growth score, and sends neutral performance reports.
 
