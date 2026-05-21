@@ -1,5 +1,4 @@
 import type { AutoCardNewsReview } from "./types.js";
-import { renderAutoCardNewsReview } from "./report.js";
 import { formatPercent } from "./scoring.js";
 
 export type SlackPayload = {
@@ -17,11 +16,11 @@ export function renderSlackPayload(review: AutoCardNewsReview): SlackPayload {
     text: `${title}\n${verdict}`,
     blocks: [
       section(`*${title}*\n${verdict}`),
+      section(`*광고*\n${adLine("기존 베스트", review.bestAd)}\n${adLine("신규 게시글", review.candidateAd)}`),
       section(`*점수 비교*\n${metricLine("기존 베스트", best)}\n${metricLine("신규 게시글", candidate)}`),
-      section(`*스냅샷 기준 팔로우*\n${snapshotLine("기존 베스트", review.bestSnapshot)}\n${snapshotLine("신규 게시글", review.candidateSnapshot)}`),
+      section(`*누적 lifetime*\n${snapshotLine("기존 베스트", review.bestSnapshot)}\n${snapshotLine("신규 게시글", review.candidateSnapshot)}`),
       section(`*판단 근거*\n${review.review.reasons.map((reason) => `• ${reason}`).join("\n")}`),
-      context("읽기 전용 리포트입니다. Meta 광고 상태, 예산, 캠페인, 광고 세트를 변경하지 않습니다."),
-      context(`원문\n${renderAutoCardNewsReview(review)}`)
+      context("읽기 전용 리포트입니다. Meta 광고 상태, 예산, 캠페인, 광고 세트를 변경하지 않습니다.")
     ]
   };
 }
@@ -41,7 +40,8 @@ export async function sendSlackWebhook(webhookUrl: string, payload: SlackPayload
 
 function metricLine(label: string, item: AutoCardNewsReview["review"]["best"]): string {
   const costPerFollow = item.costPerFollowKrw === null ? "N/A" : `${Math.round(item.costPerFollowKrw).toLocaleString("ko-KR")}원`;
-  return `${label}: 점수 ${item.valueScorePer1000Krw.toFixed(2)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${Math.round(item.spendKrw).toLocaleString("ko-KR")}원`;
+  const spend = item.spendKrw === 0 ? "0원 (기간 내 지출 없음 또는 Meta 반영 전)" : `${Math.round(item.spendKrw).toLocaleString("ko-KR")}원`;
+  return `${label}: 점수 ${item.valueScorePer1000Krw.toFixed(2)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${spend}`;
 }
 
 function snapshotLine(label: string, snapshot: AutoCardNewsReview["bestSnapshot"]): string {
@@ -49,7 +49,12 @@ function snapshotLine(label: string, snapshot: AutoCardNewsReview["bestSnapshot"
     return `${label}: media snapshot 없음`;
   }
   const basis = snapshot.usedLifetimeFallback ? "lifetime fallback" : "delta";
-  return `${label}: 이번 증가 팔로우 ${snapshot.deltaFollows}, 누적 팔로우 ${snapshot.follows}, 이번 증가 방문 ${snapshot.deltaProfileVisits}, 누적 방문 ${snapshot.profileVisits} (${basis})`;
+  const lifetimeValue = snapshot.profileVisits + snapshot.follows * 12;
+  return `${label}: 이번 증가 팔로우 ${snapshot.deltaFollows}, 누적 팔로우 ${snapshot.follows}, 이번 증가 방문 ${snapshot.deltaProfileVisits}, 누적 방문 ${snapshot.profileVisits}, 비용 제외 lifetime 점수 ${lifetimeValue} (${basis})`;
+}
+
+function adLine(label: string, ad: AutoCardNewsReview["bestAd"]): string {
+  return `${label}: ${ad.name} (${ad.id})`;
 }
 
 function section(text: string): Record<string, unknown> {

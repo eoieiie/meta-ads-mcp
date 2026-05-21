@@ -13,6 +13,18 @@ export function latestCompletedThursdayToSunday(referenceDate = new Date()): Tim
   };
 }
 
+export function currentThursdayToToday(referenceDate = new Date()): TimeRange {
+  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const day = today.getDay();
+  const daysSinceThursday = (day + 3) % 7;
+  const thursday = addDays(today, -daysSinceThursday);
+
+  return {
+    since: formatDate(thursday),
+    until: formatDate(today)
+  };
+}
+
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);

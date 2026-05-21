@@ -70,6 +70,9 @@ jobs:
         shell: bash
         run: |
           args=(--slack)
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            args+=(--scheduled)
+          fi
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run }}" == "true" ]]; then
             args+=(--dry-run)
           fi

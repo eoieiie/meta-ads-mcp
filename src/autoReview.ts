@@ -30,6 +30,9 @@ export async function createAutoCardNewsReview(
   );
   const review = reviewCardNews(best, candidate);
   review.reasons.push("팔로우 수는 Instagram Media Insights lifetime 값과 로컬 스냅샷 차이로 계산합니다. 이전 스냅샷이 없으면 lifetime 값을 사용합니다.");
+  if (best.spendKrw === 0 || candidate.spendKrw === 0) {
+    review.reasons.push("광고비 0원은 선택한 평가 기간에 지출이 없거나 Meta 지출 데이터가 아직 반영되지 않았다는 뜻입니다.");
+  }
 
   if (settings.updateState ?? true) {
     let nextState = state;
