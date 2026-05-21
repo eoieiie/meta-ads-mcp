@@ -1,0 +1,30 @@
+{
+  "name": "meta-ads-readonly-mcp",
+  "version": "0.1.0",
+  "description": "Read-only MCP server for Meta Ads card-news review reports.",
+  "type": "module",
+  "bin": {
+    "meta-ads-readonly-mcp": "./build/src/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/src/index.js",
+    "review": "node build/scripts/review.js",
+    "review:dry-run": "node build/scripts/review.js --slack --dry-run",
+    "review:slack": "node build/scripts/review.js --slack",
+    "sample": "node build/scripts/sample-report.js",
+    "test": "node --test build/tests"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^17.4.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
