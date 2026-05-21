@@ -7,7 +7,7 @@ export type CardNewsMetrics = {
   name: string;
   spendKrw: number;
   profileVisits: number;
-  follows: number;
+  follows?: number;
   saves?: number;
   shares?: number;
 };

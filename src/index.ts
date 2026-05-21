@@ -15,7 +15,7 @@ const metricsSchema = {
   name: z.string().min(1),
   spendKrw: z.number().nonnegative(),
   profileVisits: z.number().int().nonnegative(),
-  follows: z.number().int().nonnegative()
+  follows: z.number().int().nonnegative().optional()
 };
 
 const server = new McpServer({
@@ -94,14 +94,11 @@ server.registerTool(
     inputSchema: {
       best: z.object(metricsSchema),
       candidate: z.object(metricsSchema),
-      followWeight: z.number().positive().optional(),
-      minVisits: z.number().int().nonnegative().optional(),
-      minConversionRate: z.number().min(0).max(1).optional(),
-      strongMargin: z.number().min(0).optional()
+      minVisits: z.number().int().nonnegative().optional()
     }
   },
-  async ({ best, candidate, followWeight, minVisits, minConversionRate, strongMargin }) => {
-    const review = reviewCardNews(best, candidate, { followWeight, minVisits, minConversionRate, strongMargin });
+  async ({ best, candidate, minVisits }) => {
+    const review = reviewCardNews(best, candidate, { minVisits });
     return {
       content: [{ type: "text", text: renderCardNewsReview(review) }],
       structuredContent: review

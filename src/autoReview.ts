@@ -155,7 +155,7 @@ async function loadOtherAds(
       return scoreCardNews(metrics);
     })
   );
-  return scored.filter((item) => item.spendKrw > 0 || item.profileVisits > 0 || item.follows > 0).sort((left, right) => right.score - left.score);
+  return scored.filter((item) => item.spendKrw > 0 || item.profileVisits > 0).sort((left, right) => right.score - left.score);
 }
 
 function mergeDailyRows(bestRows: AdInsightsMetrics[], candidateRows: AdInsightsMetrics[]): AutoCardNewsReview["dailyRows"] {
