@@ -19,11 +19,13 @@ export function renderSlackPayload(review: AutoCardNewsReview): SlackPayload {
       section(`*전체 기간: 기존 best*\n${metricLine(review.bestLifecycle)}`),
       section(`*동일 기간*\n기존 best: ${metricLine(review.bestRecent)}\n신규 게시글: ${metricLine(review.candidateRecent)}`),
       divider(),
+      section(`*전체 기간 게시글별 점수*\n${allPostsTable(review)}`),
+      section(`*비교 방식 설명*\n${logicExplanation(review)}`),
+      divider(),
       section(`*일별 성과*\n${dailyLines(review)}`),
       divider(),
       section(`*교체 조건*\n${criteriaLines(review)}`),
       divider(),
-      section(`*기타 게시글*\n${otherAdLines(review)}`),
       context("읽기 전용 리포트입니다. Meta 광고 상태, 예산, 캠페인, 광고 세트를 변경하지 않습니다.")
     ]
   };
@@ -73,11 +75,28 @@ function dailyLines(review: AutoCardNewsReview): string {
     .join("\n");
 }
 
-function otherAdLines(review: AutoCardNewsReview): string {
-  if (review.otherAds.length === 0) {
-    return "표시할 기타 게시글 성과 없음";
-  }
-  return review.otherAds.slice(0, 5).map((ad) => `${ad.name}: 방문 효율 ${formatScore(ad.score)} = 방문 ${ad.profileVisits} ÷ ${won(ad.spendKrw)}`).join("\n");
+function allPostsTable(review: AutoCardNewsReview): string {
+  const stripPrefix = (name: string) => name.replace(/^grdn_참여_20260410[\s_-]*/, "");
+  const allPosts = [
+    { ...review.bestLifecycle, _marker: "★BEST" },
+    { ...review.candidateLifecycle, _marker: "★NEW" },
+    ...review.otherAds.map((a) => ({ ...a, _marker: "" }))
+  ];
+  allPosts.sort((a, b) => b.score - a.score);
+  return allPosts.map((p, i) => {
+    const marker = p._marker;
+    const flag = marker ? ` ${marker}` : "";
+    return `${i + 1}. ${stripPrefix(p.name)}${flag}: 방문 효율 ${formatScore(p.score)} (방문 ${p.profileVisits}, ${won(p.spendKrw)})`;
+  }).join("\n");
+}
+
+function logicExplanation(review: AutoCardNewsReview): string {
+  const period = `${review.timeRange.since} ~ ${review.timeRange.until}`;
+  return [
+    `*동일 기간*: 두 게시글이 각자의 세트에서 동시 운영된 ${period} 데이터로 비교합니다.`,
+    `*방문 효율* = 방문 ÷ 광고비 × 100 (광고비 차이를 정규화한 효율 지표)`,
+    `*전체 기간 점수*는 참고용입니다. 각 게시글이 광고에 사용된 전체 기간의 누적 효율이며, 같은 조건의 동일 기간 비교와 다를 수 있습니다.`,
+  ].join("\n");
 }
 
 function yesNo(value: boolean): string {

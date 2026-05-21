@@ -9,6 +9,7 @@ test("renders Slack payload for automatic review", () => {
     bestAd: { id: "best-ad", name: "best" },
     candidateAd: { id: "new-ad", name: "new" },
     bestLifecycle: scoreCardNews({ name: "best", spendKrw: 2000, profileVisits: 20, follows: 2, saves: 3, shares: 1 }),
+    candidateLifecycle: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
     bestRecent: scoreCardNews({ name: "best", spendKrw: 1000, profileVisits: 10, follows: 1, saves: 3, shares: 1 }),
     candidateRecent: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
     dailyRows: [],
@@ -52,6 +53,8 @@ test("renders Slack payload for automatic review", () => {
   assert.match(blockText, /저장 3/);
   assert.doesNotMatch(blockText, /원문/);
   assert.doesNotMatch(blockText, /누적 lifetime/);
+  assert.match(blockText, /전체 기간 게시글별 점수/);
+  assert.match(blockText, /비교 방식 설명/);
 });
 
 test("explains zero spend in Slack metrics", () => {
@@ -60,6 +63,7 @@ test("explains zero spend in Slack metrics", () => {
     bestAd: { id: "best-ad", name: "best" },
     candidateAd: { id: "new-ad", name: "new" },
     bestLifecycle: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
+    candidateLifecycle: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
     bestRecent: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
     candidateRecent: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
     dailyRows: [],
