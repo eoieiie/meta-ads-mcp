@@ -35,7 +35,9 @@ export async function createAutoCardNewsReview(
     state.media[candidateMediaId ?? ""]
   );
   const bestLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, bestAd, allAds);
+  const candidateLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, candidateAd, allAds);
   const bestLifecycle = scoreCardNews(bestLifecycleMetrics);
+  const candidateLifecycle = scoreCardNews(candidateLifecycleMetrics);
   const bestRecent = scoreCardNews(best);
   const candidateRecent = scoreCardNews(candidate);
   const review = reviewCardNews(best, candidate);
@@ -62,6 +64,7 @@ export async function createAutoCardNewsReview(
     bestAd,
     candidateAd,
     bestLifecycle,
+    candidateLifecycle,
     bestRecent,
     candidateRecent,
     dailyRows: mergeDailyRows(bestDaily, candidateDaily),

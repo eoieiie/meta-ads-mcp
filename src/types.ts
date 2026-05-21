@@ -93,6 +93,7 @@ export type AutoCardNewsReview = {
   bestAd: MetaAdSummary;
   candidateAd: MetaAdSummary;
   bestLifecycle: ScoredCardNews;
+  candidateLifecycle: ScoredCardNews;
   bestRecent: ScoredCardNews;
   candidateRecent: ScoredCardNews;
   dailyRows: Array<{
