@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/src/index.js",
+    "serve": "node build/src/server.js",
     "review": "node build/scripts/review.js",
     "review:dry-run": "node build/scripts/review.js --slack --dry-run",
     "review:slack": "node build/scripts/review.js --slack",
