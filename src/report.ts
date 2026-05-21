@@ -22,9 +22,15 @@ export function renderAutoCardNewsReview(autoReview: AutoCardNewsReview): string
     `기존 베스트 광고: ${autoReview.bestAd.name} (${autoReview.bestAd.id})`,
     `신규 후보 광고: ${autoReview.candidateAd.name} (${autoReview.candidateAd.id})`,
     "",
-    "스냅샷 기준 팔로우",
-    renderSnapshotLine("기존 베스트", autoReview.bestSnapshot),
-    renderSnapshotLine("신규 게시글", autoReview.candidateSnapshot),
+    "전체 기간 기준: 기존 best",
+    renderScoredLine("기존 best 전체", autoReview.bestLifecycle),
+    "",
+    "동일 기간 기준",
+    renderScoredLine("기존 best 최근", autoReview.bestRecent),
+    renderScoredLine("신규 게시글", autoReview.candidateRecent),
+    "",
+    "일별 성과",
+    ...autoReview.dailyRows.map((row) => `- ${row.date}: best 광고비 ${formatWon(row.best.spendKrw)}, 방문 ${row.best.instagramProfileVisits ?? 0}, 저장 ${row.best.saves}, 공유 ${row.best.shares} / 신규 광고비 ${formatWon(row.candidate.spendKrw)}, 방문 ${row.candidate.instagramProfileVisits ?? 0}, 저장 ${row.candidate.saves}, 공유 ${row.candidate.shares}`),
     "",
     renderCardNewsReview(autoReview.review)
   ].join("\n");
@@ -32,13 +38,9 @@ export function renderAutoCardNewsReview(autoReview: AutoCardNewsReview): string
 
 function renderScoredLine(label: string, item: ScoredCardNews): string {
   const costPerFollow = item.costPerFollowKrw === null ? "N/A" : `${Math.round(item.costPerFollowKrw).toLocaleString("ko-KR")}원`;
-  return `- ${label}(${item.name}): 점수 ${item.valueScorePer1000Krw.toFixed(2)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${Math.round(item.spendKrw).toLocaleString("ko-KR")}원`;
+  return `- ${label}(${item.name}): 점수 ${item.score.toFixed(4)}, 방문 ${item.profileVisits}, 팔로우 ${item.follows}, 전환율 ${formatPercent(item.conversionRate)}, 팔로우당 비용 ${costPerFollow}, 광고비 ${formatWon(item.spendKrw)}, 저장 ${item.saves ?? 0}, 공유 ${item.shares ?? 0}`;
 }
 
-function renderSnapshotLine(label: string, snapshot: AutoCardNewsReview["bestSnapshot"]): string {
-  if (!snapshot) {
-    return `- ${label}: media snapshot 없음`;
-  }
-  const fallback = snapshot.usedLifetimeFallback ? "첫 스냅샷이라 lifetime 사용" : "이전 스냅샷 대비 증가분";
-  return `- ${label}: 이번 증가 팔로우 ${snapshot.deltaFollows}, 누적 팔로우 ${snapshot.follows}, 이번 증가 방문 ${snapshot.deltaProfileVisits}, 누적 방문 ${snapshot.profileVisits} (${fallback})`;
+function formatWon(value: number): string {
+  return `${Math.round(value).toLocaleString("ko-KR")}원`;
 }

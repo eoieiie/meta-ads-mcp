@@ -1,12 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderSlackPayload } from "../src/slack.js";
+import { scoreCardNews } from "../src/scoring.js";
 
 test("renders Slack payload for automatic review", () => {
   const payload = renderSlackPayload({
     timeRange: { since: "2026-05-21", until: "2026-05-24" },
     bestAd: { id: "best-ad", name: "best" },
     candidateAd: { id: "new-ad", name: "new" },
+    bestLifecycle: scoreCardNews({ name: "best", spendKrw: 2000, profileVisits: 20, follows: 2, saves: 3, shares: 1 }),
+    bestRecent: scoreCardNews({ name: "best", spendKrw: 1000, profileVisits: 10, follows: 1, saves: 3, shares: 1 }),
+    candidateRecent: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
+    dailyRows: [],
+    otherAds: [],
     bestSnapshot: {
       mediaId: "best-media",
       capturedAt: "now",
@@ -30,26 +36,8 @@ test("renders Slack payload for automatic review", () => {
       usedLifetimeFallback: true
     },
     review: {
-      best: {
-        name: "best",
-        spendKrw: 1000,
-        profileVisits: 10,
-        follows: 1,
-        conversionRate: 0.1,
-        costPerFollowKrw: 1000,
-        valueScorePer1000Krw: 22,
-        sampleQualified: false
-      },
-      candidate: {
-        name: "new",
-        spendKrw: 1000,
-        profileVisits: 20,
-        follows: 2,
-        conversionRate: 0.1,
-        costPerFollowKrw: 500,
-        valueScorePer1000Krw: 44,
-        sampleQualified: false
-      },
+      best: scoreCardNews({ name: "best", spendKrw: 1000, profileVisits: 10, follows: 1, saves: 3, shares: 1 }),
+      candidate: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
       recommendation: "insufficient_sample",
       summary: "표본 부족",
       reasons: ["방문 수 부족"]
@@ -61,8 +49,9 @@ test("renders Slack payload for automatic review", () => {
   const blockText = JSON.stringify(payload.blocks);
   assert.match(blockText, /best \(best-ad\)/);
   assert.match(blockText, /new \(new-ad\)/);
-  assert.match(blockText, /비용 제외 lifetime 점수 132/);
+  assert.match(blockText, /저장 3/);
   assert.doesNotMatch(blockText, /원문/);
+  assert.doesNotMatch(blockText, /누적 lifetime/);
 });
 
 test("explains zero spend in Slack metrics", () => {
@@ -70,27 +59,14 @@ test("explains zero spend in Slack metrics", () => {
     timeRange: { since: "2026-05-21", until: "2026-05-24" },
     bestAd: { id: "best-ad", name: "best" },
     candidateAd: { id: "new-ad", name: "new" },
+    bestLifecycle: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
+    bestRecent: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
+    candidateRecent: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
+    dailyRows: [],
+    otherAds: [],
     review: {
-      best: {
-        name: "best",
-        spendKrw: 0,
-        profileVisits: 10,
-        follows: 1,
-        conversionRate: 0.1,
-        costPerFollowKrw: 0,
-        valueScorePer1000Krw: 0,
-        sampleQualified: false
-      },
-      candidate: {
-        name: "new",
-        spendKrw: 0,
-        profileVisits: 20,
-        follows: 2,
-        conversionRate: 0.1,
-        costPerFollowKrw: 0,
-        valueScorePer1000Krw: 0,
-        sampleQualified: false
-      },
+      best: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
+      candidate: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
       recommendation: "insufficient_sample",
       summary: "표본 부족",
       reasons: ["방문 수 부족"]

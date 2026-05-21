@@ -2,20 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { reviewCardNews, scoreCardNews } from "../src/scoring.js";
 
-test("scores card-news metrics with follow weight per 1,000 KRW", () => {
+test("scores card-news metrics with follow weight over spend", () => {
   const scored = scoreCardNews({ name: "빛", spendKrw: 19354, profileVisits: 248, follows: 32 });
 
-  assert.equal(scored.valueScorePer1000Krw.toFixed(2), "32.65");
+  assert.equal(scored.score.toFixed(4), "0.0327");
   assert.equal(scored.conversionRate.toFixed(3), "0.129");
 });
 
-test("blocks high score candidate when sample is too small", () => {
+test("candidate clears switch criteria with score, conversion, and visits", () => {
   const review = reviewCardNews(
     { name: "빛", spendKrw: 19354, profileVisits: 248, follows: 32 },
     { name: "관리", spendKrw: 686, profileVisits: 12, follows: 6 }
   );
 
-  assert.equal(review.recommendation, "insufficient_sample");
+  assert.equal(review.recommendation, "strong_replace");
 });
 
 test("strongly recommends candidate only when it clears sample, conversion, and margin", () => {

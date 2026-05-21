@@ -17,15 +17,7 @@ export class MetaReadOnlyClient {
       access_token: this.accessToken
     });
     const data = await this.getJson<{ data?: Array<Record<string, unknown>> }>(`/${encodeURIComponent(adId)}/insights?${params}`);
-    const row = data.data?.[0] ?? {};
-    const actions = Array.isArray(row.actions) ? parseActions(row.actions) : [];
-
-    return {
-      spendKrw: parseNumber(row.spend),
-      instagramProfileVisits: parseNullableNumber(row.instagram_profile_visits),
-      actions,
-      raw: data
-    };
+    return parseInsightsRow(data.data?.[0] ?? {}, data);
   }
 
   async getAccountAdInsights(accountId: string, adId: string, timeRange: TimeRange): Promise<AdInsightsMetrics> {
@@ -37,15 +29,32 @@ export class MetaReadOnlyClient {
       access_token: this.accessToken
     });
     const data = await this.getJson<{ data?: Array<Record<string, unknown>> }>(`/${encodeURIComponent(accountId)}/insights?${params}`);
-    const row = data.data?.[0] ?? {};
-    const actions = Array.isArray(row.actions) ? parseActions(row.actions) : [];
+    return parseInsightsRow(data.data?.[0] ?? {}, data);
+  }
 
-    return {
-      spendKrw: parseNumber(row.spend),
-      instagramProfileVisits: parseNullableNumber(row.instagram_profile_visits),
-      actions,
-      raw: data
-    };
+  async getAccountAdInsightsMaximum(accountId: string, adId: string): Promise<AdInsightsMetrics> {
+    const params = new URLSearchParams({
+      level: "ad",
+      fields: "ad_id,spend,instagram_profile_visits,actions,cost_per_action_type",
+      date_preset: "maximum",
+      filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: [adId] }]),
+      access_token: this.accessToken
+    });
+    const data = await this.getJson<{ data?: Array<Record<string, unknown>> }>(`/${encodeURIComponent(accountId)}/insights?${params}`);
+    return parseInsightsRow(data.data?.[0] ?? {}, data);
+  }
+
+  async getAccountAdDailyInsights(accountId: string, adId: string, timeRange: TimeRange): Promise<AdInsightsMetrics[]> {
+    const params = new URLSearchParams({
+      level: "ad",
+      fields: "ad_id,ad_name,date_start,date_stop,spend,instagram_profile_visits,actions,cost_per_action_type",
+      time_range: JSON.stringify(timeRange),
+      time_increment: "1",
+      filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: [adId] }]),
+      access_token: this.accessToken
+    });
+    const data = await this.getJson<{ data?: Array<Record<string, unknown>> }>(`/${encodeURIComponent(accountId)}/insights?${params}`);
+    return (data.data ?? []).map((row) => parseInsightsRow(row, row));
   }
 
   async listAdSetAds(adSetId: string): Promise<MetaAdSummary[]> {
@@ -55,6 +64,7 @@ export class MetaReadOnlyClient {
         "name",
         "status",
         "effective_status",
+        "created_time",
         "updated_time",
         "creative{id,name,instagram_permalink_url,source_instagram_media_id}"
       ].join(","),
@@ -117,6 +127,7 @@ function parseAdSummary(value: unknown): MetaAdSummary[] {
       name: value.name,
       status: typeof value.status === "string" ? value.status : undefined,
       effectiveStatus: typeof value.effective_status === "string" ? value.effective_status : undefined,
+      createdTime: typeof value.created_time === "string" ? value.created_time : undefined,
       updatedTime: typeof value.updated_time === "string" ? value.updated_time : undefined,
       creative
     }
@@ -148,6 +159,24 @@ function parseActions(value: unknown[]): Array<{ action_type: string; value: str
     }
     return [{ action_type: item.action_type, value: String(item.value ?? "0") }];
   });
+}
+
+function parseInsightsRow(row: Record<string, unknown>, raw: unknown): AdInsightsMetrics {
+  const actions = Array.isArray(row.actions) ? parseActions(row.actions) : [];
+  return {
+    dateStart: typeof row.date_start === "string" ? row.date_start : undefined,
+    dateStop: typeof row.date_stop === "string" ? row.date_stop : undefined,
+    spendKrw: parseNumber(row.spend),
+    instagramProfileVisits: parseNullableNumber(row.instagram_profile_visits),
+    saves: sumActions(actions, (actionType) => actionType.includes("save")),
+    shares: sumActions(actions, (actionType) => actionType === "post" || actionType.includes("share")),
+    actions,
+    raw
+  };
+}
+
+function sumActions(actions: Array<{ action_type: string; value: string }>, predicate: (actionType: string) => boolean): number {
+  return actions.reduce((sum, action) => sum + (predicate(action.action_type) ? parseNumber(action.value) : 0), 0);
 }
 
 function metricValue(data: { data?: Array<{ name?: string; values?: Array<{ value?: unknown }> }> }, name: string): number | null {

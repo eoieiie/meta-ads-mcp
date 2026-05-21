@@ -1,18 +1,18 @@
 # Meta Ads Read-only MCP
 
-Read-only MCP server for reviewing Meta Ads card-news performance. It reads Meta metrics, calculates a follower-growth score, and returns manual recommendations only.
+Read-only MCP server for reviewing Meta Ads card-news performance. It reads Meta metrics, calculates a follower-growth score, and sends neutral performance reports.
 
 It never creates, pauses, deletes, updates, or changes budgets for Meta ads.
 
 ## Scope
 
 - First target: Instagram feed card-news posts.
-- Recommendation only: no Meta write actions.
-- Current score: `(profileVisits + follows * 12) / spendKrw * 1000`.
-- Strong manual replacement recommendation:
-  - `profileVisits >= 80`
+- Report only: no Meta write actions.
+- Current score: `(profileVisits + follows * 12) / spendKrw`.
+- Best-change criteria shown in the report:
+  - candidate score is higher than best score for the same period
   - `follows / profileVisits >= 10%`
-  - `candidateScore >= bestScore * 1.10`
+  - `profileVisits >= 10`
 
 ## Tools
 
@@ -60,10 +60,11 @@ Use a token with read permissions only where possible, such as `ads_read` and In
 2. Read each ad creative's `source_instagram_media_id`.
 3. Read ad spend/profile visits from Ads Insights.
 4. Read follows from Instagram Media Insights.
-5. Store media lifetime snapshots in `data/state.json`.
-6. Compare the two ads for the selected report window.
+5. Read saves/shares from Ads Insights actions when Meta exposes them.
+6. Store media snapshots in `data/state.json`.
+7. Compare best lifecycle, best same-period, and candidate same-period scores.
 
-The tool only reads data and returns a recommendation. It does not change budgets, statuses, ads, ad sets, campaigns, or posts.
+The tool only reads data and returns a performance report. It does not change budgets, statuses, ads, ad sets, campaigns, or posts.
 
 Note: Ads Insights exposes spend and Instagram profile visits for the selected date range. Instagram Media Insights exposes `follows` as a media lifetime metric. This server calculates weekly follow growth from the difference between the current lifetime value and the previous local snapshot. If there is no previous snapshot, it uses the lifetime value and clearly labels that fallback in the report.
 
@@ -82,7 +83,7 @@ This means a manual check on Friday reports Thursday-Friday, while the regular M
 
 `send_auto_review_to_slack` posts the automatic report to `SLACK_WEBHOOK_URL`. Use `dryRun: true` first to inspect the payload without sending a Slack message. This does not write to Meta; it only reads Meta data and optionally sends one Slack webhook request.
 
-The Slack message shows the report window, conclusion, best/new ad names and IDs, score comparison, lifetime snapshot values, and decision reasons. It does not include a duplicated raw text copy. If spend is `0원`, the message labels it as no spend in the selected period or Meta spend data not being reflected yet.
+The Slack message shows the report window, best/new ad names and IDs, best lifecycle score, best same-period score, candidate same-period score, daily spend/visit/save/share rows, criteria checks, and brief scores for other posts. It does not include recommendation wording or a duplicated raw text copy. If spend is `0원`, the message labels it as no spend in the selected period or Meta spend data not being reflected yet.
 
 ## CLI
 
