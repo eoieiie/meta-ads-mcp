@@ -45,7 +45,7 @@ export function reviewCardNews(
   const enoughConversion = candidate.conversionRate >= minConversionRate;
   const enoughVisits = candidate.profileVisits >= (options.minVisits ?? DEFAULT_MIN_VISITS);
 
-  reasons.push(`점수: 기존 ${best.score.toFixed(4)}, 신규 ${candidate.score.toFixed(4)}`);
+  reasons.push(`점수: 기존 ${best.score.toFixed(2)}, 신규 ${candidate.score.toFixed(2)}`);
   reasons.push(`신규 전환율: ${formatPercent(candidate.conversionRate)}`);
   reasons.push(`신규 방문: ${candidate.profileVisits}`);
 

@@ -14,11 +14,16 @@ export function renderSlackPayload(review: AutoCardNewsReview): SlackPayload {
     text: `${title}\n${result}`,
     blocks: [
       section(`*${title}*\n${result}`),
+      divider(),
       section(`*광고*\n${adLine("기존 베스트", review.bestAd)}\n${adLine("신규 게시글", review.candidateAd)}`),
-      section(`*전체 기간 기준: 기존 best*\n${metricLine(review.bestLifecycle)}`),
-      section(`*동일 기간 기준*\n기존 best: ${metricLine(review.bestRecent)}\n신규 게시글: ${metricLine(review.candidateRecent)}`),
+      divider(),
+      section(`*전체 기간: 기존 best*\n${metricLine(review.bestLifecycle)}`),
+      section(`*동일 기간*\n기존 best: ${metricLine(review.bestRecent)}\n신규 게시글: ${metricLine(review.candidateRecent)}`),
+      divider(),
       section(`*일별 성과*\n${dailyLines(review)}`),
-      section(`*교체 기준 체크*\n${criteriaLines(review)}`),
+      divider(),
+      section(`*교체 조건*\n${criteriaLines(review)}`),
+      divider(),
       section(`*기타 게시글*\n${otherAdLines(review)}`),
       context("읽기 전용 리포트입니다. Meta 광고 상태, 예산, 캠페인, 광고 세트를 변경하지 않습니다.")
     ]
@@ -88,6 +93,10 @@ function won(value: number): string {
 
 function formatScore(value: number): string {
   return value.toFixed(2);
+}
+
+function divider(): Record<string, unknown> {
+  return { type: "divider" };
 }
 
 function section(text: string): Record<string, unknown> {

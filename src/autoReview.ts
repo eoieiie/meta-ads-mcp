@@ -108,7 +108,8 @@ async function loadLifecycleMetrics(client: MetaReadOnlyClient, adAccountId: str
   return {
     name: ad.name,
     spendKrw: adInsights.spendKrw,
-    profileVisits: adInsights.instagramProfileVisits ?? mediaInsights?.profileVisits ?? 0,
+    // 전체 기간 기준은 게시글 lifetime 방문/팔로우 사용 (광고 단위 방문은 일부만 반영)
+    profileVisits: mediaInsights?.profileVisits ?? adInsights.instagramProfileVisits ?? 0,
     follows: mediaInsights?.follows ?? 0,
     saves: adInsights.saves,
     shares: adInsights.shares
