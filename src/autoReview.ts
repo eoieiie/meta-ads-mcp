@@ -22,15 +22,19 @@ export async function createAutoCardNewsReview(
   const candidateAd = selectActiveAd(candidateAds, "new");
   const state = await loadReviewState(settings.statePath);
 
-  const best = await loadAutoMetrics(client, settings.adAccountId, bestAd, settings.timeRange, state.media[bestAd.creative?.sourceInstagramMediaId ?? ""]);
+  const allAds = [...bestAds, ...candidateAds];
+  const bestMediaId = bestAd.creative?.sourceInstagramMediaId;
+  const candidateMediaId = candidateAd.creative?.sourceInstagramMediaId;
+
+  const best = await loadAutoMetrics(client, settings.adAccountId, bestAd, settings.timeRange, state.media[bestMediaId ?? ""]);
   const candidate = await loadAutoMetrics(
     client,
     settings.adAccountId,
     candidateAd,
     settings.timeRange,
-    state.media[candidateAd.creative?.sourceInstagramMediaId ?? ""]
+    state.media[candidateMediaId ?? ""]
   );
-  const bestLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, bestAd);
+  const bestLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, bestAd, allAds);
   const bestLifecycle = scoreCardNews(bestLifecycleMetrics);
   const bestRecent = scoreCardNews(best);
   const candidateRecent = scoreCardNews(candidate);
@@ -39,7 +43,8 @@ export async function createAutoCardNewsReview(
     client.getAccountAdDailyInsights(settings.adAccountId, bestAd.id, settings.timeRange),
     client.getAccountAdDailyInsights(settings.adAccountId, candidateAd.id, settings.timeRange)
   ]);
-  const otherAds = await loadOtherAds(client, settings.adAccountId, [...bestAds, ...candidateAds], new Set([bestAd.id, candidateAd.id]));
+  const excludedMediaIds = new Set([bestMediaId, candidateMediaId].filter((id): id is string => !!id));
+  const otherAds = await loadOtherAds(client, settings.adAccountId, allAds, new Set([bestAd.id, candidateAd.id]), excludedMediaIds);
 
   if (settings.updateState ?? true) {
     let nextState = state;
@@ -101,18 +106,29 @@ async function loadAutoMetrics(
   };
 }
 
-async function loadLifecycleMetrics(client: MetaReadOnlyClient, adAccountId: string, ad: MetaAdSummary): Promise<CardNewsMetrics> {
-  const adInsights = await client.getAccountAdInsightsMaximum(adAccountId, ad.id);
+async function loadLifecycleMetrics(client: MetaReadOnlyClient, adAccountId: string, ad: MetaAdSummary, allAds?: MetaAdSummary[]): Promise<CardNewsMetrics> {
   const mediaId = ad.creative?.sourceInstagramMediaId;
+  // 같은 게시글(미디어)을 쓰는 모든 광고 찾기 (세트가 달라도 동일 콘텐츠의 총 성과 집계)
+  const matchingAds = allAds && mediaId
+    ? allAds.filter((a) => a.creative?.sourceInstagramMediaId === mediaId)
+    : [ad];
+
+  const allMax = await Promise.all(
+    matchingAds.map((a) => client.getAccountAdInsightsMaximum(adAccountId, a.id))
+  );
+  const totalSpend = allMax.reduce((sum, m) => sum + m.spendKrw, 0);
+  const totalSaves = allMax.reduce((sum, m) => sum + m.saves, 0);
+  const totalShares = allMax.reduce((sum, m) => sum + m.shares, 0);
+
   const mediaInsights = mediaId ? await client.getInstagramMediaInsights(mediaId) : null;
+
   return {
     name: ad.name,
-    spendKrw: adInsights.spendKrw,
-    // 전체 기간 기준은 게시글 lifetime 방문/팔로우 사용 (광고 단위 방문은 일부만 반영)
-    profileVisits: mediaInsights?.profileVisits ?? adInsights.instagramProfileVisits ?? 0,
+    spendKrw: totalSpend,
+    profileVisits: mediaInsights?.profileVisits ?? allMax[0].instagramProfileVisits ?? 0,
     follows: mediaInsights?.follows ?? 0,
-    saves: adInsights.saves,
-    shares: adInsights.shares
+    saves: totalSaves,
+    shares: totalShares
   };
 }
 
@@ -120,12 +136,13 @@ async function loadOtherAds(
   client: MetaReadOnlyClient,
   adAccountId: string,
   ads: MetaAdSummary[],
-  excludedIds: Set<string>
+  excludedIds: Set<string>,
+  excludedMediaIds: Set<string> = new Set()
 ): Promise<ScoredCardNews[]> {
   const uniqueAds = [
     ...new Map(
       ads
-        .filter((ad) => !excludedIds.has(ad.id))
+        .filter((ad) => !excludedIds.has(ad.id) && !(ad.creative?.sourceInstagramMediaId && excludedMediaIds.has(ad.creative.sourceInstagramMediaId)))
         .map((ad) => [ad.creative?.sourceInstagramMediaId ?? ad.id, ad])
     ).values()
   ];
