@@ -1,5 +1,5 @@
 import { reviewCardNews, scoreCardNews } from "./scoring.js";
-import type { AdInsightsMetrics, AutoCardNewsReview, CardNewsMetrics, MetaAdSummary, ScoredCardNews, TimeRange } from "./types.js";
+import type { AdInsightsMetrics, AutoCardNewsReview, CardNewsMetrics, CardNewsReview, MetaAdSummary, OtherAdWithRecent, ScoredCardNews, TimeRange } from "./types.js";
 import type { MetaReadOnlyClient } from "./metaClient.js";
 import { createDeltaSnapshot, loadReviewState, saveReviewState, upsertMediaSnapshot } from "./stateStore.js";
 
@@ -18,72 +18,68 @@ export async function createAutoCardNewsReview(
 ): Promise<AutoCardNewsReview> {
   const bestAds = await client.listAdSetAds(settings.bestAdSetId);
   const candidateAds = await client.listAdSetAds(settings.newAdSetId);
-  const bestAd = selectActiveAd(bestAds, "best");
+  const bestAd = selectActiveAd(bestAds, "best") ?? bestAds.sort(compareUpdatedDesc)[0];
   const candidateAd = selectActiveAd(candidateAds, "new");
   const state = await loadReviewState(settings.statePath);
 
   const allAds = [...bestAds, ...candidateAds];
   const bestMediaId = bestAd.creative?.sourceInstagramMediaId;
-  const candidateMediaId = candidateAd.creative?.sourceInstagramMediaId;
 
   const best = await loadAutoMetrics(client, settings.adAccountId, bestAd, settings.timeRange, state.media[bestMediaId ?? ""]);
-  const candidate = await loadAutoMetrics(
-    client,
-    settings.adAccountId,
-    candidateAd,
-    settings.timeRange,
-    state.media[candidateMediaId ?? ""]
-  );
-  const bestLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, bestAd, allAds);
-  const candidateLifecycleMetrics = await loadLifecycleMetrics(client, settings.adAccountId, candidateAd, allAds);
-  const bestLifecycle = scoreCardNews(bestLifecycleMetrics);
-  const candidateLifecycle = scoreCardNews(candidateLifecycleMetrics);
+  const bestLifecycle = scoreCardNews(await loadLifecycleMetrics(client, settings.adAccountId, bestAd, allAds));
   const bestRecent = scoreCardNews(best);
-  const candidateRecent = scoreCardNews(candidate);
-  const review = reviewCardNews(best, candidate);
-  const [bestDaily, candidateDaily] = await Promise.all([
-    client.getAccountAdDailyInsights(settings.adAccountId, bestAd.id, settings.timeRange),
-    client.getAccountAdDailyInsights(settings.adAccountId, candidateAd.id, settings.timeRange)
-  ]);
-  const excludedMediaIds = new Set([bestMediaId, candidateMediaId].filter((id): id is string => !!id));
-  const otherAds = await loadOtherAds(client, settings.adAccountId, allAds, new Set([bestAd.id, candidateAd.id]), excludedMediaIds);
+
+  let candidate: Awaited<ReturnType<typeof loadAutoMetrics>> | undefined;
+  let candidateLifecycle: ScoredCardNews | undefined;
+  let candidateRecent: ScoredCardNews | undefined;
+  let review: CardNewsReview | undefined;
+  let candidateDaily: AdInsightsMetrics[] = [];
+  let excludedFromOther = new Set([bestAd.id]);
+  let excludedMediaIds = new Set(bestMediaId ? [bestMediaId] : []);
+
+  if (candidateAd) {
+    const candidateMediaId = candidateAd.creative?.sourceInstagramMediaId;
+    candidate = await loadAutoMetrics(client, settings.adAccountId, candidateAd, settings.timeRange, state.media[candidateMediaId ?? ""]);
+    candidateLifecycle = scoreCardNews(await loadLifecycleMetrics(client, settings.adAccountId, candidateAd, allAds));
+    candidateRecent = scoreCardNews(candidate);
+    review = reviewCardNews(best, candidate);
+    candidateDaily = await client.getAccountAdDailyInsights(settings.adAccountId, candidateAd.id, settings.timeRange);
+    excludedFromOther = new Set([bestAd.id, candidateAd.id]);
+    excludedMediaIds = new Set([bestMediaId, candidateMediaId].filter((id): id is string => !!id));
+  }
+
+  const bestDaily = await client.getAccountAdDailyInsights(settings.adAccountId, bestAd.id, settings.timeRange);
+  const dailyRows = mergeDailyRows(bestDaily, candidateDaily);
+
+  const otherAds = await loadOtherAds(client, settings.adAccountId, allAds, excludedFromOther, excludedMediaIds, settings.timeRange);
 
   if (settings.updateState ?? true) {
     let nextState = state;
-    if (best.snapshot) {
-      nextState = upsertMediaSnapshot(nextState, best.snapshot);
-    }
-    if (candidate.snapshot) {
-      nextState = upsertMediaSnapshot(nextState, candidate.snapshot);
-    }
+    if (best.snapshot) nextState = upsertMediaSnapshot(nextState, best.snapshot);
+    if (candidate?.snapshot) nextState = upsertMediaSnapshot(nextState, candidate.snapshot);
     await saveReviewState(nextState, settings.statePath);
   }
 
   return {
     timeRange: settings.timeRange,
     bestAd,
-    candidateAd,
+    candidateAd: candidateAd ?? undefined,
     bestLifecycle,
     candidateLifecycle,
     bestRecent,
     candidateRecent,
-    dailyRows: mergeDailyRows(bestDaily, candidateDaily),
+    dailyRows,
     otherAds,
     bestSnapshot: best.snapshot,
-    candidateSnapshot: candidate.snapshot,
+    candidateSnapshot: candidate?.snapshot,
     review
   };
 }
 
-export function selectActiveAd(ads: MetaAdSummary[], label: string): MetaAdSummary {
+export function selectActiveAd(ads: MetaAdSummary[], label: string): MetaAdSummary | null {
   const activeAds = ads.filter((ad) => ad.effectiveStatus === "ACTIVE" || ad.status === "ACTIVE");
-  const candidates = activeAds.length > 0 ? activeAds : ads;
-
-  if (candidates.length === 0) {
-    throw new Error(`No ads found in ${label} ad set.`);
-  }
-
-  return [...candidates].sort(compareUpdatedDesc)[0];
+  if (activeAds.length === 0) return null;
+  return [...activeAds].sort(compareUpdatedDesc)[0];
 }
 
 async function loadAutoMetrics(
@@ -143,8 +139,9 @@ async function loadOtherAds(
   adAccountId: string,
   ads: MetaAdSummary[],
   excludedIds: Set<string>,
-  excludedMediaIds: Set<string> = new Set()
-): Promise<ScoredCardNews[]> {
+  excludedMediaIds: Set<string> = new Set(),
+  timeRange?: TimeRange
+): Promise<OtherAdWithRecent[]> {
   const uniqueAds = [
     ...new Map(
       ads
@@ -154,8 +151,23 @@ async function loadOtherAds(
   ];
   const scored = await Promise.all(
     uniqueAds.map(async (ad) => {
-      const metrics = await loadLifecycleMetrics(client, adAccountId, ad);
-      return scoreCardNews(metrics);
+      const lifecycle = await loadLifecycleMetrics(client, adAccountId, ad);
+      const lifecycleScored = scoreCardNews(lifecycle);
+      let recentScored: ScoredCardNews;
+      if (timeRange) {
+        const recentInsights = await client.getAccountAdInsights(adAccountId, ad.id, timeRange);
+        recentScored = scoreCardNews({
+          name: ad.name,
+          spendKrw: recentInsights.spendKrw,
+          profileVisits: recentInsights.instagramProfileVisits ?? 0,
+          saves: recentInsights.saves,
+          shares: recentInsights.shares,
+          likes: recentInsights.likes
+        });
+      } else {
+        recentScored = lifecycleScored;
+      }
+      return { ...lifecycleScored, recent: recentScored };
     })
   );
   return scored.filter((item) => item.spendKrw > 0 || item.profileVisits > 0).sort((left, right) => right.score - left.score);
@@ -171,7 +183,7 @@ function mergeDailyRows(bestRows: AdInsightsMetrics[], candidateRows: AdInsights
 }
 
 function emptyDaily(date: string): AdInsightsMetrics {
-  return { dateStart: date, dateStop: date, spendKrw: 0, instagramProfileVisits: 0, saves: 0, shares: 0, actions: [], raw: null };
+  return { dateStart: date, dateStop: date, spendKrw: 0, instagramProfileVisits: 0, saves: 0, shares: 0, likes: 0, actions: [], raw: null };
 }
 
 function compareUpdatedDesc(left: MetaAdSummary, right: MetaAdSummary): number {

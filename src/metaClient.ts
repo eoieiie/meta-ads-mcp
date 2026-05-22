@@ -170,6 +170,7 @@ function parseInsightsRow(row: Record<string, unknown>, raw: unknown): AdInsight
     instagramProfileVisits: parseNullableNumber(row.instagram_profile_visits),
     saves: sumActions(actions, (actionType) => actionType.includes("save")),
     shares: sumActions(actions, (actionType) => actionType === "post" || actionType.includes("share")),
+    likes: sumActions(actions, (actionType) => actionType === "post_reaction" || actionType === "like" || actionType.includes("reaction")),
     actions,
     raw
   };

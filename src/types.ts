@@ -10,6 +10,7 @@ export type CardNewsMetrics = {
   follows?: number;
   saves?: number;
   shares?: number;
+  likes?: number;
 };
 
 export type ScoredCardNews = CardNewsMetrics & {
@@ -19,6 +20,10 @@ export type ScoredCardNews = CardNewsMetrics & {
   costPerFollowKrw: number | null;
   valueScorePer1000Krw: number;
   sampleQualified: boolean;
+};
+
+export type OtherAdWithRecent = ScoredCardNews & {
+  recent: ScoredCardNews;
 };
 
 export type RecommendationLevel = "strong_replace" | "observe" | "keep_best" | "insufficient_sample";
@@ -55,6 +60,7 @@ export type AdInsightsMetrics = {
   instagramProfileVisits: number | null;
   saves: number;
   shares: number;
+  likes: number;
   actions: Array<{ action_type: string; value: string }>;
   raw: unknown;
 };
@@ -91,18 +97,18 @@ export type ReviewState = {
 export type AutoCardNewsReview = {
   timeRange: TimeRange;
   bestAd: MetaAdSummary;
-  candidateAd: MetaAdSummary;
+  candidateAd?: MetaAdSummary;
   bestLifecycle: ScoredCardNews;
-  candidateLifecycle: ScoredCardNews;
+  candidateLifecycle?: ScoredCardNews;
   bestRecent: ScoredCardNews;
-  candidateRecent: ScoredCardNews;
+  candidateRecent?: ScoredCardNews;
   dailyRows: Array<{
     date: string;
     best: AdInsightsMetrics;
     candidate: AdInsightsMetrics;
   }>;
-  otherAds: ScoredCardNews[];
+  otherAds: OtherAdWithRecent[];
   bestSnapshot?: MediaDeltaSnapshot;
   candidateSnapshot?: MediaDeltaSnapshot;
-  review: CardNewsReview;
+  review?: CardNewsReview;
 };

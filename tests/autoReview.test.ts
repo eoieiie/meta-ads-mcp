@@ -11,10 +11,11 @@ test("selects the active ad from an ad set", () => {
     "test"
   );
 
-  assert.equal(selected.id, "2");
+  assert.ok(selected);
+  assert.equal(selected!.id, "2");
 });
 
-test("falls back to the most recently updated ad when none are active", () => {
+test("returns null when no ads are active", () => {
   const selected = selectActiveAd(
     [
       { id: "1", name: "older", effectiveStatus: "PAUSED", updatedTime: "2026-05-19T00:00:00+0900" },
@@ -23,5 +24,5 @@ test("falls back to the most recently updated ad when none are active", () => {
     "test"
   );
 
-  assert.equal(selected.id, "2");
+  assert.equal(selected, null);
 });

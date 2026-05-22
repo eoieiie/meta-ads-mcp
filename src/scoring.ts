@@ -14,6 +14,7 @@ export function scoreCardNews(metrics: CardNewsMetrics, options: ScoringOptions 
     ...metrics,
     saves: metrics.saves ?? 0,
     shares: metrics.shares ?? 0,
+    likes: metrics.likes ?? 0,
     weightedValue: metrics.profileVisits,
     score,
     conversionRate: 0,
