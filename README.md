@@ -359,3 +359,5 @@ Manual trigger: `GitHub UI → Actions → Meta Ads Report → Run workflow`.
 - [MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - Slack Incoming Webhook
 - node:test for unit tests
+
+Maintained by [Byeongjoo Hwang](https://github.com/eoieiie).
