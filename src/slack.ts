@@ -54,7 +54,7 @@ export async function sendSlackWebhook(webhookUrl: string, payload: SlackPayload
 }
 
 function formatKoreanDate(isoDate: string): string {
-  const date = new Date(isoDate + "T00:00:00+09:00");
+  const date = new Date(isoDate + "T00:00:00");
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
