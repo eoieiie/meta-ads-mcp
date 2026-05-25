@@ -13,7 +13,7 @@
     "review:dry-run": "node build/scripts/review.js --slack --dry-run",
     "review:slack": "node build/scripts/review.js --slack",
     "sample": "node build/scripts/sample-report.js",
-    "test": "node --import tsx --test tests/autoReview.test.ts tests/dateRange.test.ts tests/scoring.test.ts tests/slack.test.ts tests/stateStore.test.ts"
+    "test": "node --import tsx --test tests/autoReview.test.ts tests/dateRange.test.ts tests/scoring.test.ts tests/slack.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

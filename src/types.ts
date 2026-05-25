@@ -3,39 +3,6 @@ export type TimeRange = {
   until: string;
 };
 
-export type CardNewsMetrics = {
-  name: string;
-  spendKrw: number;
-  profileVisits: number;
-  follows?: number;
-  saves?: number;
-  shares?: number;
-  likes?: number;
-};
-
-export type ScoredCardNews = CardNewsMetrics & {
-  weightedValue: number;
-  score: number;
-  conversionRate: number;
-  costPerFollowKrw: number | null;
-  valueScorePer1000Krw: number;
-  sampleQualified: boolean;
-};
-
-export type OtherAdWithRecent = ScoredCardNews & {
-  recent: ScoredCardNews;
-};
-
-export type RecommendationLevel = "strong_replace" | "observe" | "keep_best" | "insufficient_sample";
-
-export type CardNewsReview = {
-  best: ScoredCardNews;
-  candidate: ScoredCardNews;
-  recommendation: RecommendationLevel;
-  summary: string;
-  reasons: string[];
-};
-
 export type MetaAdCreativeSummary = {
   id: string;
   name?: string;
@@ -61,54 +28,40 @@ export type AdInsightsMetrics = {
   saves: number;
   shares: number;
   likes: number;
+  impressions: number;
+  reach: number;
   actions: Array<{ action_type: string; value: string }>;
   raw: unknown;
 };
 
-export type MediaInsightsMetrics = {
-  profileVisits: number | null;
-  follows: number | null;
-  reach: number | null;
-  views: number | null;
-  raw: unknown;
+export type DeathmatchScore = {
+  championCPPV: number;
+  challengerCPPV: number;
+  championSaveRate: number;
+  challengerSaveRate: number;
+  championFrequency: number;
+  challengerFrequency: number;
+  costScore: number;
+  attrScore: number;
+  penalty: number;
+  challengerHS: number;
+  championHS: number;
+  winner: "champion" | "challenger";
 };
 
-export type MediaLifetimeSnapshot = {
-  mediaId: string;
-  capturedAt: string;
-  profileVisits: number;
-  follows: number;
-  reach: number;
-  views: number;
-};
-
-export type MediaDeltaSnapshot = MediaLifetimeSnapshot & {
-  previous?: MediaLifetimeSnapshot;
-  deltaProfileVisits: number;
-  deltaFollows: number;
-  usedLifetimeFallback: boolean;
-};
-
-export type ReviewState = {
-  version: 1;
-  media: Record<string, MediaLifetimeSnapshot>;
-};
-
-export type AutoCardNewsReview = {
+export type DeathmatchReport = {
   timeRange: TimeRange;
-  bestAd: MetaAdSummary;
-  candidateAd?: MetaAdSummary;
-  bestLifecycle: ScoredCardNews;
-  candidateLifecycle?: ScoredCardNews;
-  bestRecent: ScoredCardNews;
-  candidateRecent?: ScoredCardNews;
+  adSetId: string;
+  championAd: MetaAdSummary;
+  challengerAd: MetaAdSummary | null;
+  championMetrics: AdInsightsMetrics;
+  challengerMetrics: AdInsightsMetrics | null;
+  score: DeathmatchScore | null;
   dailyRows: Array<{
     date: string;
-    best: AdInsightsMetrics;
-    candidate: AdInsightsMetrics;
+    champion: AdInsightsMetrics;
+    challenger: AdInsightsMetrics;
   }>;
-  otherAds: OtherAdWithRecent[];
-  bestSnapshot?: MediaDeltaSnapshot;
-  candidateSnapshot?: MediaDeltaSnapshot;
-  review?: CardNewsReview;
 };
+
+

@@ -1,4 +1,4 @@
-import type { AdInsightsMetrics, MediaInsightsMetrics, MetaAdSummary, TimeRange } from "./types.js";
+import type { AdInsightsMetrics, MetaAdSummary, TimeRange } from "./types.js";
 
 export class MetaReadOnlyClient {
   private readonly baseUrl: string;
@@ -12,7 +12,7 @@ export class MetaReadOnlyClient {
 
   async getAdInsights(adId: string, timeRange: TimeRange): Promise<AdInsightsMetrics> {
     const params = new URLSearchParams({
-      fields: "spend,instagram_profile_visits,actions,cost_per_action_type",
+      fields: "spend,impressions,reach,instagram_profile_visits,actions",
       time_range: JSON.stringify(timeRange),
       access_token: this.accessToken
     });
@@ -23,20 +23,8 @@ export class MetaReadOnlyClient {
   async getAccountAdInsights(accountId: string, adId: string, timeRange: TimeRange): Promise<AdInsightsMetrics> {
     const params = new URLSearchParams({
       level: "ad",
-      fields: "ad_id,spend,instagram_profile_visits,actions,cost_per_action_type",
+      fields: "ad_id,spend,impressions,reach,instagram_profile_visits,actions",
       time_range: JSON.stringify(timeRange),
-      filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: [adId] }]),
-      access_token: this.accessToken
-    });
-    const data = await this.getJson<{ data?: Array<Record<string, unknown>> }>(`/${encodeURIComponent(accountId)}/insights?${params}`);
-    return parseInsightsRow(data.data?.[0] ?? {}, data);
-  }
-
-  async getAccountAdInsightsMaximum(accountId: string, adId: string): Promise<AdInsightsMetrics> {
-    const params = new URLSearchParams({
-      level: "ad",
-      fields: "ad_id,spend,instagram_profile_visits,actions,cost_per_action_type",
-      date_preset: "maximum",
       filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: [adId] }]),
       access_token: this.accessToken
     });
@@ -47,7 +35,7 @@ export class MetaReadOnlyClient {
   async getAccountAdDailyInsights(accountId: string, adId: string, timeRange: TimeRange): Promise<AdInsightsMetrics[]> {
     const params = new URLSearchParams({
       level: "ad",
-      fields: "ad_id,ad_name,date_start,date_stop,spend,instagram_profile_visits,actions,cost_per_action_type",
+      fields: "ad_id,ad_name,date_start,date_stop,spend,impressions,reach,instagram_profile_visits,actions",
       time_range: JSON.stringify(timeRange),
       time_increment: "1",
       filtering: JSON.stringify([{ field: "ad.id", operator: "IN", value: [adId] }]),
@@ -73,24 +61,6 @@ export class MetaReadOnlyClient {
     });
     const data = await this.getJson<{ data?: unknown[] }>(`/${encodeURIComponent(adSetId)}/ads?${params}`);
     return (data.data ?? []).flatMap(parseAdSummary);
-  }
-
-  async getInstagramMediaInsights(mediaId: string): Promise<MediaInsightsMetrics> {
-    const params = new URLSearchParams({
-      metric: "profile_visits,follows,reach,views",
-      access_token: this.accessToken
-    });
-    const data = await this.getJson<{ data?: Array<{ name?: string; values?: Array<{ value?: unknown }> }> }>(
-      `/${encodeURIComponent(mediaId)}/insights?${params}`
-    );
-
-    return {
-      profileVisits: metricValue(data, "profile_visits"),
-      follows: metricValue(data, "follows"),
-      reach: metricValue(data, "reach"),
-      views: metricValue(data, "views"),
-      raw: data
-    };
   }
 
   private async getJson<T>(pathAndQuery: string): Promise<T> {
@@ -171,6 +141,8 @@ function parseInsightsRow(row: Record<string, unknown>, raw: unknown): AdInsight
     saves: sumActions(actions, (actionType) => actionType.includes("save")),
     shares: sumActions(actions, (actionType) => actionType === "post" || actionType.includes("share")),
     likes: sumActions(actions, (actionType) => actionType === "post_reaction" || actionType === "like" || actionType.includes("reaction")),
+    impressions: parseNumber(row.impressions),
+    reach: parseNumber(row.reach),
     actions,
     raw
   };
@@ -178,15 +150,6 @@ function parseInsightsRow(row: Record<string, unknown>, raw: unknown): AdInsight
 
 function sumActions(actions: Array<{ action_type: string; value: string }>, predicate: (actionType: string) => boolean): number {
   return actions.reduce((sum, action) => sum + (predicate(action.action_type) ? parseNumber(action.value) : 0), 0);
-}
-
-function metricValue(data: { data?: Array<{ name?: string; values?: Array<{ value?: unknown }> }> }, name: string): number | null {
-  const metric = data.data?.find((item) => item.name === name);
-  if (!metric) {
-    return null;
-  }
-  const firstValue = metric.values?.[0]?.value;
-  return parseNullableNumber(firstValue);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

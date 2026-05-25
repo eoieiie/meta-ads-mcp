@@ -1,193 +1,115 @@
-import { reviewCardNews, scoreCardNews } from "./scoring.js";
-import type { AdInsightsMetrics, AutoCardNewsReview, CardNewsMetrics, CardNewsReview, MetaAdSummary, OtherAdWithRecent, ScoredCardNews, TimeRange } from "./types.js";
+import { calculateDeathmatchScore } from "./scoring.js";
+import type { AdInsightsMetrics, DeathmatchReport, MetaAdSummary, TimeRange } from "./types.js";
 import type { MetaReadOnlyClient } from "./metaClient.js";
-import { createDeltaSnapshot, loadReviewState, saveReviewState, upsertMediaSnapshot } from "./stateStore.js";
 
-export type AutoReviewSettings = {
+export type DeathmatchSettings = {
   adAccountId: string;
-  bestAdSetId: string;
-  newAdSetId: string;
+  adSetId: string;
   timeRange: TimeRange;
-  updateState?: boolean;
-  statePath?: string;
 };
 
-export async function createAutoCardNewsReview(
+export async function createDeathmatchReview(
   client: MetaReadOnlyClient,
-  settings: AutoReviewSettings
-): Promise<AutoCardNewsReview> {
-  const bestAds = await client.listAdSetAds(settings.bestAdSetId);
-  const candidateAds = await client.listAdSetAds(settings.newAdSetId);
-  const bestAd = selectActiveAd(bestAds, "best") ?? bestAds.sort(compareUpdatedDesc)[0];
-  const candidateAd = selectActiveAd(candidateAds, "new");
-  const state = await loadReviewState(settings.statePath);
-
-  const allAds = [...bestAds, ...candidateAds];
-  const bestMediaId = bestAd.creative?.sourceInstagramMediaId;
-
-  const best = await loadAutoMetrics(client, settings.adAccountId, bestAd, settings.timeRange, state.media[bestMediaId ?? ""]);
-  const bestLifecycle = scoreCardNews(await loadLifecycleMetrics(client, settings.adAccountId, bestAd, allAds));
-  const bestRecent = scoreCardNews(best);
-
-  let candidate: Awaited<ReturnType<typeof loadAutoMetrics>> | undefined;
-  let candidateLifecycle: ScoredCardNews | undefined;
-  let candidateRecent: ScoredCardNews | undefined;
-  let review: CardNewsReview | undefined;
-  let candidateDaily: AdInsightsMetrics[] = [];
-  let excludedFromOther = new Set([bestAd.id]);
-  let excludedMediaIds = new Set(bestMediaId ? [bestMediaId] : []);
-
-  if (candidateAd) {
-    const candidateMediaId = candidateAd.creative?.sourceInstagramMediaId;
-    candidate = await loadAutoMetrics(client, settings.adAccountId, candidateAd, settings.timeRange, state.media[candidateMediaId ?? ""]);
-    candidateLifecycle = scoreCardNews(await loadLifecycleMetrics(client, settings.adAccountId, candidateAd, allAds));
-    candidateRecent = scoreCardNews(candidate);
-    review = reviewCardNews(best, candidate);
-    candidateDaily = await client.getAccountAdDailyInsights(settings.adAccountId, candidateAd.id, settings.timeRange);
-    excludedFromOther = new Set([bestAd.id, candidateAd.id]);
-    excludedMediaIds = new Set([bestMediaId, candidateMediaId].filter((id): id is string => !!id));
+  settings: DeathmatchSettings
+): Promise<DeathmatchReport> {
+  // 1. List all ads in the ad set
+  const allAds = await client.listAdSetAds(settings.adSetId);
+  
+  // 2. Filter to ACTIVE only
+  const activeAds = allAds.filter(
+    (ad) => ad.effectiveStatus === "ACTIVE" || ad.status === "ACTIVE"
+  );
+  
+  if (activeAds.length === 0) {
+    throw new Error(`No ACTIVE ads found in ad set ${settings.adSetId}`);
   }
-
-  const bestDaily = await client.getAccountAdDailyInsights(settings.adAccountId, bestAd.id, settings.timeRange);
-  const dailyRows = mergeDailyRows(bestDaily, candidateDaily);
-
-  const otherAds = await loadOtherAds(client, settings.adAccountId, allAds, excludedFromOther, excludedMediaIds, settings.timeRange);
-
-  if (settings.updateState ?? true) {
-    let nextState = state;
-    if (best.snapshot) nextState = upsertMediaSnapshot(nextState, best.snapshot);
-    if (candidate?.snapshot) nextState = upsertMediaSnapshot(nextState, candidate.snapshot);
-    await saveReviewState(nextState, settings.statePath);
+  
+  // 3. Sort by created_time ASC → champion = oldest, challenger = newest
+  const sorted = [...activeAds].sort(
+    (a, b) => timestamp(a.createdTime) - timestamp(b.createdTime)
+  );
+  
+  const championAd = sorted[0];
+  const challengerAd = sorted.length >= 2 ? sorted[sorted.length - 1] : null;
+  
+  // 4. Fetch metrics
+  const championMetrics = await client.getAccountAdInsights(
+    settings.adAccountId,
+    championAd.id,
+    settings.timeRange
+  );
+  
+  let challengerMetrics: AdInsightsMetrics | null = null;
+  let score: ReturnType<typeof calculateDeathmatchScore> | null = null;
+  let challengerDaily: AdInsightsMetrics[] = [];
+  
+  if (challengerAd) {
+    challengerMetrics = await client.getAccountAdInsights(
+      settings.adAccountId,
+      challengerAd.id,
+      settings.timeRange
+    );
+    score = calculateDeathmatchScore(championMetrics, challengerMetrics);
+    challengerDaily = await client.getAccountAdDailyInsights(
+      settings.adAccountId,
+      challengerAd.id,
+      settings.timeRange
+    );
   }
-
+  
+  const championDaily = await client.getAccountAdDailyInsights(
+    settings.adAccountId,
+    championAd.id,
+    settings.timeRange
+  );
+  
+  // 5. Merge daily rows
+  const dailyRows = mergeDailyRows(championDaily, challengerDaily);
+  
   return {
     timeRange: settings.timeRange,
-    bestAd,
-    candidateAd: candidateAd ?? undefined,
-    bestLifecycle,
-    candidateLifecycle,
-    bestRecent,
-    candidateRecent,
-    dailyRows,
-    otherAds,
-    bestSnapshot: best.snapshot,
-    candidateSnapshot: candidate?.snapshot,
-    review
+    adSetId: settings.adSetId,
+    championAd,
+    challengerAd: challengerAd ?? null,
+    championMetrics,
+    challengerMetrics,
+    score,
+    dailyRows
   };
 }
 
-export function selectActiveAd(ads: MetaAdSummary[], label: string): MetaAdSummary | null {
-  const activeAds = ads.filter((ad) => ad.effectiveStatus === "ACTIVE" || ad.status === "ACTIVE");
-  if (activeAds.length === 0) return null;
-  return [...activeAds].sort(compareUpdatedDesc)[0];
-}
-
-async function loadAutoMetrics(
-  client: MetaReadOnlyClient,
-  adAccountId: string,
-  ad: MetaAdSummary,
-  timeRange: TimeRange,
-  previousSnapshot: Parameters<typeof createDeltaSnapshot>[2]
-): Promise<CardNewsMetrics & { snapshot?: ReturnType<typeof createDeltaSnapshot> }> {
-  const adInsights = await client.getAccountAdInsights(adAccountId, ad.id, timeRange);
-  const mediaId = ad.creative?.sourceInstagramMediaId;
-  const mediaInsights = mediaId ? await client.getInstagramMediaInsights(mediaId) : null;
-  const snapshot = mediaId && mediaInsights ? createDeltaSnapshot(mediaId, mediaInsights, previousSnapshot) : undefined;
-
-  return {
-    name: ad.name,
-    spendKrw: adInsights.spendKrw,
-    profileVisits: adInsights.instagramProfileVisits ?? mediaInsights?.profileVisits ?? 0,
-    follows: snapshot?.deltaFollows ?? mediaInsights?.follows ?? 0,
-    saves: adInsights.saves,
-    shares: adInsights.shares,
-    snapshot
-  };
-}
-
-async function loadLifecycleMetrics(client: MetaReadOnlyClient, adAccountId: string, ad: MetaAdSummary, allAds?: MetaAdSummary[]): Promise<CardNewsMetrics> {
-  const mediaId = ad.creative?.sourceInstagramMediaId;
-  // 같은 게시글(미디어)을 쓰는 모든 광고 찾기 (세트가 달라도 동일 콘텐츠의 총 성과 집계)
-  const matchingAds = allAds && mediaId
-    ? allAds.filter((a) => a.creative?.sourceInstagramMediaId === mediaId)
-    : [ad];
-
-  const allMax = await Promise.all(
-    matchingAds.map((a) => client.getAccountAdInsightsMaximum(adAccountId, a.id))
-  );
-  const totalSpend = allMax.reduce((sum, m) => sum + m.spendKrw, 0);
-  const totalSaves = allMax.reduce((sum, m) => sum + m.saves, 0);
-  const totalShares = allMax.reduce((sum, m) => sum + m.shares, 0);
-
-  const mediaInsights = mediaId ? await client.getInstagramMediaInsights(mediaId) : null;
-
-  const totalVisits = allMax.reduce((sum, m) => sum + (m.instagramProfileVisits ?? 0), 0);
-
-  return {
-    name: ad.name,
-    spendKrw: totalSpend,
-    // 광고 단위 방문을 합산 (Media Insights.profileVisits는 유기 방문만 반영)
-    profileVisits: totalVisits,
-    follows: mediaInsights?.follows ?? 0,
-    saves: totalSaves,
-    shares: totalShares
-  };
-}
-
-async function loadOtherAds(
-  client: MetaReadOnlyClient,
-  adAccountId: string,
-  ads: MetaAdSummary[],
-  excludedIds: Set<string>,
-  excludedMediaIds: Set<string> = new Set(),
-  timeRange?: TimeRange
-): Promise<OtherAdWithRecent[]> {
-  const uniqueAds = [
-    ...new Map(
-      ads
-        .filter((ad) => !excludedIds.has(ad.id) && !(ad.creative?.sourceInstagramMediaId && excludedMediaIds.has(ad.creative.sourceInstagramMediaId)))
-        .map((ad) => [ad.creative?.sourceInstagramMediaId ?? ad.id, ad])
-    ).values()
-  ];
-  const scored = await Promise.all(
-    uniqueAds.map(async (ad) => {
-      const lifecycle = await loadLifecycleMetrics(client, adAccountId, ad);
-      const lifecycleScored = scoreCardNews(lifecycle);
-      let recentScored: ScoredCardNews;
-      if (timeRange) {
-        const recentInsights = await client.getAccountAdInsights(adAccountId, ad.id, timeRange);
-        recentScored = scoreCardNews({
-          name: ad.name,
-          spendKrw: recentInsights.spendKrw,
-          profileVisits: recentInsights.instagramProfileVisits ?? 0,
-          saves: recentInsights.saves,
-          shares: recentInsights.shares,
-          likes: recentInsights.likes
-        });
-      } else {
-        recentScored = lifecycleScored;
-      }
-      return { ...lifecycleScored, recent: recentScored };
-    })
-  );
-  return scored.filter((item) => item.spendKrw > 0 || item.profileVisits > 0).sort((left, right) => right.score - left.score);
-}
-
-function mergeDailyRows(bestRows: AdInsightsMetrics[], candidateRows: AdInsightsMetrics[]): AutoCardNewsReview["dailyRows"] {
-  const dates = [...new Set([...bestRows, ...candidateRows].flatMap((row) => (row.dateStart ? [row.dateStart] : [])))].sort();
+function mergeDailyRows(
+  championRows: AdInsightsMetrics[],
+  challengerRows: AdInsightsMetrics[]
+): DeathmatchReport["dailyRows"] {
+  const dates = [
+    ...new Set(
+      [...championRows, ...challengerRows]
+        .flatMap((row) => (row.dateStart ? [row.dateStart] : []))
+    )
+  ].sort();
+  
   return dates.map((date) => ({
     date,
-    best: bestRows.find((row) => row.dateStart === date) ?? emptyDaily(date),
-    candidate: candidateRows.find((row) => row.dateStart === date) ?? emptyDaily(date)
+    champion: championRows.find((row) => row.dateStart === date) ?? emptyDaily(date),
+    challenger: challengerRows.find((row) => row.dateStart === date) ?? emptyDaily(date)
   }));
 }
 
 function emptyDaily(date: string): AdInsightsMetrics {
-  return { dateStart: date, dateStop: date, spendKrw: 0, instagramProfileVisits: 0, saves: 0, shares: 0, likes: 0, actions: [], raw: null };
-}
-
-function compareUpdatedDesc(left: MetaAdSummary, right: MetaAdSummary): number {
-  return timestamp(right.updatedTime) - timestamp(left.updatedTime);
+  return {
+    dateStart: date,
+    dateStop: date,
+    spendKrw: 0,
+    impressions: 0,
+    reach: 0,
+    instagramProfileVisits: 0,
+    saves: 0,
+    shares: 0,
+    likes: 0,
+    actions: [],
+    raw: null
+  };
 }
 
 function timestamp(value: string | undefined): number {

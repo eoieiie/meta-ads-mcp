@@ -1,16 +1,15 @@
 import "dotenv/config";
-import { createAutoCardNewsReview } from "../src/autoReview.js";
-import { loadMetaConfig, requireAutoReviewConfig, requireSlackWebhookUrl } from "../src/config.js";
-import { currentThursdayToToday, latestCompletedThursdayToSunday } from "../src/dateRange.js";
+import { createDeathmatchReview } from "../src/autoReview.js";
+import { loadMetaConfig, requireAdSetConfig, requireSlackWebhookUrl } from "../src/config.js";
+import { currentDeathmatchCycle, latestDeathmatchCycle } from "../src/dateRange.js";
 import { MetaReadOnlyClient } from "../src/metaClient.js";
-import { renderAutoCardNewsReview } from "../src/report.js";
+import { renderDeathmatchReport } from "../src/report.js";
 import { renderSlackPayload, sendSlackWebhook } from "../src/slack.js";
 import type { TimeRange } from "../src/types.js";
 
 const args = new Set(process.argv.slice(2));
 const slack = args.has("--slack");
 const dryRun = args.has("--dry-run");
-const noState = args.has("--no-state");
 const scheduled = args.has("--scheduled");
 const since = valueArg("--since");
 const until = valueArg("--until");
@@ -20,17 +19,16 @@ if ((since && !until) || (!since && until)) {
 }
 
 const config = loadMetaConfig();
-const autoConfig = requireAutoReviewConfig(config);
+const adSetConfig = requireAdSetConfig(config);
 const client = new MetaReadOnlyClient(config.accessToken, config.graphVersion);
-const timeRange: TimeRange = since && until ? { since, until } : scheduled ? latestCompletedThursdayToSunday() : currentThursdayToToday();
-const autoReview = await createAutoCardNewsReview(client, {
-  ...autoConfig,
-  timeRange,
-  updateState: !noState && !dryRun
+const timeRange: TimeRange = since && until ? { since, until } : scheduled ? latestDeathmatchCycle() : currentDeathmatchCycle();
+const review = await createDeathmatchReview(client, {
+  ...adSetConfig,
+  timeRange
 });
 
 if (slack) {
-  const payload = renderSlackPayload(autoReview);
+  const payload = renderSlackPayload(review);
   if (dryRun) {
     console.log(JSON.stringify(payload, null, 2));
   } else {
@@ -38,7 +36,7 @@ if (slack) {
     console.log("Slack 전송 완료");
   }
 } else {
-  console.log(renderAutoCardNewsReview(autoReview));
+  console.log(renderDeathmatchReport(review));
 }
 
 function valueArg(name: string): string | undefined {

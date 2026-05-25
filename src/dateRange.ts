@@ -1,28 +1,34 @@
 import type { TimeRange } from "./types.js";
 
-export function latestCompletedThursdayToSunday(referenceDate = new Date()): TimeRange {
+/**
+ * Returns the most recently completed Saturday-to-Friday deathmatch cycle.
+ * - On Friday: returns the cycle ending today (this Friday).
+ * - On Saturday: returns the cycle that ended yesterday (last Friday).
+ * - Any other day: returns the most recent cycle that fully ended before today.
+ */
+export function latestDeathmatchCycle(referenceDate = new Date()): TimeRange {
   const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  const day = date.getDay();
-  const daysSinceMostRecentCompletedSunday = day === 0 ? 7 : day;
-  const sunday = addDays(date, -daysSinceMostRecentCompletedSunday);
-  const thursday = addDays(sunday, -3);
+  const day = date.getDay(); // 0=Sun, 5=Fri, 6=Sat
+  // days since most recent Friday (on or before referenceDate)
+  const daysSinceFriday = (day + 2) % 7;
+  const friday = addDays(date, -daysSinceFriday);
+  const saturday = addDays(friday, -6);
 
-  return {
-    since: formatDate(thursday),
-    until: formatDate(sunday)
-  };
+  return { since: formatDate(saturday), until: formatDate(friday) };
 }
 
-export function currentThursdayToToday(referenceDate = new Date()): TimeRange {
-  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  const day = today.getDay();
-  const daysSinceThursday = (day + 3) % 7;
-  const thursday = addDays(today, -daysSinceThursday);
+/**
+ * Returns the current deathmatch cycle: the most recent Saturday through today.
+ * Used for manual (non-scheduled) runs.
+ */
+export function currentDeathmatchCycle(referenceDate = new Date()): TimeRange {
+  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const day = date.getDay();
+  // days since most recent Saturday (on or before referenceDate)
+  const daysSinceSaturday = (day + 1) % 7;
+  const saturday = addDays(date, -daysSinceSaturday);
 
-  return {
-    since: formatDate(thursday),
-    until: formatDate(today)
-  };
+  return { since: formatDate(saturday), until: formatDate(date) };
 }
 
 function addDays(date: Date, days: number): Date {

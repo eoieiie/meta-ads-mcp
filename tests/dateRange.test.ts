@@ -1,52 +1,70 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { currentThursdayToToday, latestCompletedThursdayToSunday } from "../src/dateRange.js";
+import { currentDeathmatchCycle, latestDeathmatchCycle } from "../src/dateRange.js";
 
-test("returns previous Thursday-Sunday when run on Monday", () => {
-  assert.deepEqual(latestCompletedThursdayToSunday(new Date(2026, 4, 25)), {
-    since: "2026-05-21",
-    until: "2026-05-24"
+// Sat-Fri deathmatch cycle:
+//   May 16 (Sat) ~ May 22 (Fri) = completed cycle
+//   May 23 (Sat) ~ May 29 (Fri) = current cycle
+
+test("latestDeathmatchCycle on Friday returns the cycle ending today", () => {
+  assert.deepEqual(latestDeathmatchCycle(new Date(2026, 4, 29)), {
+    since: "2026-05-23",
+    until: "2026-05-29"
   });
 });
 
-test("returns most recently completed Thursday-Sunday when run during current window", () => {
-  assert.deepEqual(latestCompletedThursdayToSunday(new Date(2026, 4, 21)), {
-    since: "2026-05-14",
-    until: "2026-05-17"
+test("latestDeathmatchCycle on Saturday returns the cycle that ended yesterday", () => {
+  assert.deepEqual(latestDeathmatchCycle(new Date(2026, 4, 30)), {
+    since: "2026-05-23",
+    until: "2026-05-29"
   });
 });
 
-test("does not use same-day Sunday because the window is not complete", () => {
-  assert.deepEqual(latestCompletedThursdayToSunday(new Date(2026, 4, 24)), {
-    since: "2026-05-14",
-    until: "2026-05-17"
+test("latestDeathmatchCycle on Sunday returns the same cycle as Saturday", () => {
+  assert.deepEqual(latestDeathmatchCycle(new Date(2026, 4, 31)), {
+    since: "2026-05-23",
+    until: "2026-05-29"
   });
 });
 
-test("returns current Thursday through today for manual runs on Thursday", () => {
-  assert.deepEqual(currentThursdayToToday(new Date(2026, 4, 21)), {
-    since: "2026-05-21",
-    until: "2026-05-21"
-  });
-});
-
-test("returns current Thursday through today for manual runs during the active window", () => {
-  assert.deepEqual(currentThursdayToToday(new Date(2026, 4, 22)), {
-    since: "2026-05-21",
+test("latestDeathmatchCycle on Monday returns the previous completed cycle", () => {
+  assert.deepEqual(latestDeathmatchCycle(new Date(2026, 4, 25)), {
+    since: "2026-05-16",
     until: "2026-05-22"
   });
 });
 
-test("keeps the active window through Sunday for manual runs", () => {
-  assert.deepEqual(currentThursdayToToday(new Date(2026, 4, 24)), {
-    since: "2026-05-21",
-    until: "2026-05-24"
+test("latestDeathmatchCycle on Thursday returns the previous completed cycle", () => {
+  assert.deepEqual(latestDeathmatchCycle(new Date(2026, 4, 28)), {
+    since: "2026-05-16",
+    until: "2026-05-22"
   });
 });
 
-test("uses previous Thursday through today for manual runs before Thursday", () => {
-  assert.deepEqual(currentThursdayToToday(new Date(2026, 4, 20)), {
-    since: "2026-05-14",
+test("currentDeathmatchCycle on Saturday returns only that day", () => {
+  assert.deepEqual(currentDeathmatchCycle(new Date(2026, 4, 23)), {
+    since: "2026-05-23",
+    until: "2026-05-23"
+  });
+});
+
+test("currentDeathmatchCycle on Monday returns Sat-Mon", () => {
+  assert.deepEqual(currentDeathmatchCycle(new Date(2026, 4, 25)), {
+    since: "2026-05-23",
+    until: "2026-05-25"
+  });
+});
+
+test("currentDeathmatchCycle on Friday returns the full Sat-Fri cycle", () => {
+  assert.deepEqual(currentDeathmatchCycle(new Date(2026, 4, 29)), {
+    since: "2026-05-23",
+    until: "2026-05-29"
+  });
+});
+
+test("currentDeathmatchCycle before Saturday returns previous Sat window", () => {
+  assert.deepEqual(currentDeathmatchCycle(new Date(2026, 4, 20)), {
+    since: "2026-05-16",
     until: "2026-05-20"
   });
 });

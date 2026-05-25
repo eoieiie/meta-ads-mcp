@@ -1,9 +1,30 @@
-import { renderCardNewsReview } from "../src/report.js";
-import { reviewCardNews } from "../src/scoring.js";
+import { calculateDeathmatchScore } from "../src/scoring.js";
+import type { AdInsightsMetrics } from "../src/types.js";
 
-const review = reviewCardNews(
-  { name: "빛", spendKrw: 19354, profileVisits: 248, follows: 32 },
-  { name: "관리", spendKrw: 686, profileVisits: 12, follows: 6 }
-);
+const champion: AdInsightsMetrics = {
+  spendKrw: 19354,
+  impressions: 5000,
+  reach: 3000,
+  instagramProfileVisits: 248,
+  saves: 30,
+  shares: 5,
+  likes: 50,
+  actions: [],
+  raw: null,
+};
 
-console.log(renderCardNewsReview(review));
+const challenger: AdInsightsMetrics = {
+  spendKrw: 686,
+  impressions: 500,
+  reach: 450,
+  instagramProfileVisits: 12,
+  saves: 8,
+  shares: 2,
+  likes: 15,
+  actions: [],
+  raw: null,
+};
+
+const score = calculateDeathmatchScore(champion, challenger);
+console.log("=== Deathmatch Score Sample ===");
+console.log(JSON.stringify(score, null, 2));

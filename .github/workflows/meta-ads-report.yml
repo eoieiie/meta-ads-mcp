@@ -1,8 +1,9 @@
 name: Meta Ads Report
 
 on:
+  # 매주 금요일 14:00 UTC = 한국시간 23:00
   schedule:
-    - cron: "0 21 * * 0"
+    - cron: "0 14 * * 5"
   workflow_dispatch:
     inputs:
       since:
@@ -19,9 +20,6 @@ on:
         default: false
         type: boolean
 
-permissions:
-  contents: write
-
 jobs:
   report:
     runs-on: ubuntu-latest
@@ -30,8 +28,7 @@ jobs:
       META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
       META_GRAPH_VERSION: ${{ vars.META_GRAPH_VERSION || 'v25.0' }}
       META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
-      META_BEST_ADSET_ID: ${{ secrets.META_BEST_ADSET_ID }}
-      META_NEW_ADSET_ID: ${{ secrets.META_NEW_ADSET_ID }}
+      META_ADSET_ID: ${{ secrets.META_ADSET_ID }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Checkout
@@ -47,7 +44,7 @@ jobs:
         shell: bash
         run: |
           missing=0
-          for name in META_ACCESS_TOKEN META_AD_ACCOUNT_ID META_BEST_ADSET_ID META_NEW_ADSET_ID SLACK_WEBHOOK_URL; do
+          for name in META_ACCESS_TOKEN META_AD_ACCOUNT_ID META_ADSET_ID SLACK_WEBHOOK_URL; do
             if [[ -z "${!name}" ]]; then
               echo "Missing required secret: $name"
               missing=1
@@ -80,10 +77,3 @@ jobs:
             args+=(--since "${{ inputs.since }}" --until "${{ inputs.until }}")
           fi
           node build/scripts/review.js "${args[@]}"
-
-      - name: Commit state snapshot
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run != true }}
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Update Meta Ads snapshot"
-          file_pattern: data/state.json

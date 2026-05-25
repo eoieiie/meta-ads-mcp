@@ -1,81 +1,129 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderSlackPayload } from "../src/slack.js";
-import { scoreCardNews } from "../src/scoring.js";
+import type { DeathmatchReport } from "../src/types.js";
 
-test("renders Slack payload for automatic review", () => {
-  const payload = renderSlackPayload({
+function fullReport(overrides?: Partial<DeathmatchReport>): DeathmatchReport {
+  return {
     timeRange: { since: "2026-05-21", until: "2026-05-24" },
-    bestAd: { id: "best-ad", name: "best" },
-    candidateAd: { id: "new-ad", name: "new" },
-    bestLifecycle: scoreCardNews({ name: "best", spendKrw: 2000, profileVisits: 20, follows: 2, saves: 3, shares: 1 }),
-    candidateLifecycle: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
-    bestRecent: scoreCardNews({ name: "best", spendKrw: 1000, profileVisits: 10, follows: 1, saves: 3, shares: 1 }),
-    candidateRecent: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
-    dailyRows: [],
-    otherAds: [],
-    bestSnapshot: {
-      mediaId: "best-media",
-      capturedAt: "now",
-      profileVisits: 72,
-      follows: 5,
-      reach: 939,
-      views: 1278,
-      deltaProfileVisits: 2,
-      deltaFollows: 1,
-      usedLifetimeFallback: false
+    adSetId: "set-1",
+    championAd: { id: "champ-ad", name: "빛" },
+    challengerAd: { id: "chall-ad", name: "관리" },
+    championMetrics: {
+      spendKrw: 10000,
+      impressions: 5000,
+      reach: 3000,
+      instagramProfileVisits: 100,
+      saves: 50,
+      shares: 5,
+      likes: 30,
+      actions: [],
+      raw: null,
     },
-    candidateSnapshot: {
-      mediaId: "new-media",
-      capturedAt: "now",
-      profileVisits: 5,
-      follows: 0,
-      reach: 192,
-      views: 541,
-      deltaProfileVisits: 5,
-      deltaFollows: 0,
-      usedLifetimeFallback: true
+    challengerMetrics: {
+      spendKrw: 5000,
+      impressions: 3000,
+      reach: 2000,
+      instagramProfileVisits: 80,
+      saves: 40,
+      shares: 3,
+      likes: 20,
+      actions: [],
+      raw: null,
     },
-    review: {
-      best: scoreCardNews({ name: "best", spendKrw: 1000, profileVisits: 10, follows: 1, saves: 3, shares: 1 }),
-      candidate: scoreCardNews({ name: "new", spendKrw: 1000, profileVisits: 20, follows: 2, saves: 4, shares: 2 }),
-      recommendation: "insufficient_sample",
-      summary: "표본 부족",
-      reasons: ["방문 수 부족"]
-    }
-  });
+    score: {
+      championCPPV: 100,
+      challengerCPPV: 62.5,
+      championSaveRate: 50 / 3000,
+      challengerSaveRate: 40 / 2000,
+      championFrequency: 5000 / 3000,
+      challengerFrequency: 3000 / 2000,
+      costScore: (100 / 62.5) * 60,
+      attrScore: ((40 / 2000) / (50 / 3000)) * 40,
+      penalty: 0,
+      challengerHS: 110,
+      championHS: 100,
+      winner: "challenger",
+    },
+    dailyRows: [
+      {
+        date: "2026-05-21",
+        champion: { spendKrw: 2000, impressions: 1000, reach: 600, instagramProfileVisits: 20, saves: 10, shares: 1, likes: 6, actions: [], raw: null },
+        challenger: { spendKrw: 1000, impressions: 600, reach: 400, instagramProfileVisits: 16, saves: 8, shares: 0, likes: 4, actions: [], raw: null },
+      },
+    ],
+    ...overrides,
+  };
+}
 
-  assert.match(payload.text, /Meta Ads 리포트/);
-  assert.ok(payload.blocks.length >= 4);
+test("renders Slack payload with score for full deathmatch report", () => {
+  const report = fullReport();
+  const payload = renderSlackPayload(report);
+
+  assert.match(payload.text, /Meta Ads 데스매치 리포트/);
+  assert.ok(payload.blocks.length >= 6);
   const blockText = JSON.stringify(payload.blocks);
-  assert.match(blockText, /best \(best-ad\)/);
-  assert.match(blockText, /new \(new-ad\)/);
-  assert.match(blockText, /저장 3/);
-  assert.doesNotMatch(blockText, /원문/);
-  assert.doesNotMatch(blockText, /누적 lifetime/);
-  assert.match(blockText, /전체 기간 게시글별 점수/);
-  assert.match(blockText, /비교 방식 설명/);
+  assert.match(blockText, /챔피언/);
+  assert.match(blockText, /챌린저/);
+  assert.match(blockText, /기준점 100점/);
+  assert.match(blockText, /AI 결단 플랜/);
+  assert.match(blockText, /일별 성과/);
 });
 
-test("explains zero spend in Slack metrics", () => {
-  const payload = renderSlackPayload({
-    timeRange: { since: "2026-05-21", until: "2026-05-24" },
-    bestAd: { id: "best-ad", name: "best" },
-    candidateAd: { id: "new-ad", name: "new" },
-    bestLifecycle: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
-    candidateLifecycle: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
-    bestRecent: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
-    candidateRecent: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
-    dailyRows: [],
-    otherAds: [],
-    review: {
-      best: scoreCardNews({ name: "best", spendKrw: 0, profileVisits: 10, follows: 1 }),
-      candidate: scoreCardNews({ name: "new", spendKrw: 0, profileVisits: 20, follows: 2 }),
-      recommendation: "insufficient_sample",
-      summary: "표본 부족",
-      reasons: ["방문 수 부족"]
-    }
+test("renders Slack payload for single ad (no challenger, null score)", () => {
+  const report = fullReport({
+    challengerAd: null,
+    challengerMetrics: null,
+    score: null,
+    dailyRows: [
+      {
+        date: "2026-05-21",
+        champion: { spendKrw: 2000, impressions: 1000, reach: 600, instagramProfileVisits: 20, saves: 10, shares: 1, likes: 6, actions: [], raw: null },
+        challenger: { spendKrw: 0, impressions: 0, reach: 0, instagramProfileVisits: 0, saves: 0, shares: 0, likes: 0, actions: [], raw: null },
+      },
+    ],
   });
 
-  assert.match(JSON.stringify(payload.blocks), /기간 내 지출 없음 또는 Meta 반영 전/);
+  const payload = renderSlackPayload(report);
+  assert.match(payload.text, /Meta Ads 데스매치 리포트/);
+  const blockText = JSON.stringify(payload.blocks);
+  assert.match(blockText, /단일 광고만 운영/);
+  assert.match(blockText, /챔피언/);
+  assert.match(blockText, /챌린저 없음/);
+});
+
+test("includes daily lines in Slack payload", () => {
+  const report = fullReport();
+  const payload = renderSlackPayload(report);
+  const blockText = JSON.stringify(payload.blocks);
+  assert.match(blockText, /2026-05-21/);
+  assert.match(blockText, /광고비/);
+  assert.match(blockText, /방문/);
+  assert.match(blockText, /저장/);
+  assert.match(blockText, /도달/);
+});
+
+test("shows zero spend explanation when spend is 0", () => {
+  const report = fullReport({
+    championMetrics: { spendKrw: 0, impressions: 0, reach: 0, instagramProfileVisits: 0, saves: 0, shares: 0, likes: 0, actions: [], raw: null },
+    challengerMetrics: { spendKrw: 0, impressions: 0, reach: 0, instagramProfileVisits: 0, saves: 0, shares: 0, likes: 0, actions: [], raw: null },
+    score: {
+      championCPPV: 0,
+      challengerCPPV: 0,
+      championSaveRate: 0,
+      challengerSaveRate: 0,
+      championFrequency: 0,
+      challengerFrequency: 0,
+      costScore: 60,
+      attrScore: 0,
+      penalty: 0,
+      challengerHS: 60,
+      championHS: 100,
+      winner: "champion",
+    },
+  });
+
+  const payload = renderSlackPayload(report);
+  const blockText = JSON.stringify(payload.blocks);
+  assert.match(blockText, /0원/);
 });

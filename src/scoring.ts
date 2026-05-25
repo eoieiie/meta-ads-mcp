@@ -1,72 +1,70 @@
-import type { CardNewsMetrics, CardNewsReview, ScoredCardNews } from "./types.js";
+import type { AdInsightsMetrics, DeathmatchScore } from "./types.js";
 
-export const DEFAULT_MIN_VISITS = 10;
+export function calculateDeathmatchScore(
+  champion: AdInsightsMetrics,
+  challenger: AdInsightsMetrics
+): DeathmatchScore {
+  // --- CPPV (Cost Per Profile Visit) ---
+  const championCPPV =
+    champion.instagramProfileVisits === 0 || champion.instagramProfileVisits === null
+      ? 0
+      : champion.spendKrw / champion.instagramProfileVisits;
+  const challengerCPPV =
+    challenger.instagramProfileVisits === 0 || challenger.instagramProfileVisits === null
+      ? 0
+      : challenger.spendKrw / challenger.instagramProfileVisits;
 
-export type ScoringOptions = {
-  minVisits?: number;
-};
+  // --- SaveRate ---
+  const championSaveRate = champion.reach === 0 ? 0 : champion.saves / champion.reach;
+  const challengerSaveRate = challenger.reach === 0 ? 0 : challenger.saves / challenger.reach;
 
-export function scoreCardNews(metrics: CardNewsMetrics, options: ScoringOptions = {}): ScoredCardNews {
-  const minVisits = options.minVisits ?? DEFAULT_MIN_VISITS;
-  const score = metrics.spendKrw === 0 ? 0 : (metrics.profileVisits / metrics.spendKrw) * 100;
+  // --- Frequency ---
+  const championFrequency = champion.reach === 0 ? 0 : champion.impressions / champion.reach;
+  const challengerFrequency = challenger.reach === 0 ? 0 : challenger.impressions / challenger.reach;
 
-  return {
-    ...metrics,
-    saves: metrics.saves ?? 0,
-    shares: metrics.shares ?? 0,
-    likes: metrics.likes ?? 0,
-    weightedValue: metrics.profileVisits,
-    score,
-    conversionRate: 0,
-    costPerFollowKrw: null,
-    valueScorePer1000Krw: score,
-    sampleQualified: metrics.profileVisits >= minVisits
-  };
-}
-
-export function reviewCardNews(
-  bestMetrics: CardNewsMetrics,
-  candidateMetrics: CardNewsMetrics,
-  options: ScoringOptions = {}
-): CardNewsReview {
-  const best = scoreCardNews(bestMetrics, options);
-  const candidate = scoreCardNews(candidateMetrics, options);
-  const reasons: string[] = [];
-  const higherScore = candidate.score > best.score;
-  const enoughVisits = candidate.profileVisits >= (options.minVisits ?? DEFAULT_MIN_VISITS);
-
-  reasons.push(`방문 효율: 기존 ${best.score.toFixed(2)}, 신규 ${candidate.score.toFixed(2)}`);
-  reasons.push(`신규 방문: ${candidate.profileVisits}`);
-
-  if (higherScore && enoughVisits) {
-    return {
-      best,
-      candidate,
-      recommendation: "strong_replace",
-      summary: "신규 게시글이 기준을 충족했습니다.",
-      reasons
-    };
+  // --- CostScore ---
+  let costScore: number;
+  if (championCPPV === 0 && challengerCPPV === 0) {
+    costScore = 60;
+  } else if (championCPPV === 0 && challengerCPPV > 0) {
+    costScore = 120;
+  } else if (championCPPV > 0 && challengerCPPV === 0) {
+    costScore = 0;
+  } else {
+    costScore = Math.min((championCPPV / challengerCPPV) * 60, 120);
   }
 
-  if (higherScore) {
-    return {
-      best,
-      candidate,
-      recommendation: "observe",
-      summary: "신규 게시글 점수가 더 높지만 방문이 부족합니다.",
-      reasons
-    };
+  // --- AttrScore ---
+  let attrScore: number;
+  if (championSaveRate > 0) {
+    attrScore = Math.min((challengerSaveRate / championSaveRate) * 40, 80);
+  } else {
+    // championSaveRate === 0
+    attrScore = challenger.saves > 0 ? 40 : 0;
   }
 
-  return {
-    best,
-    candidate,
-    recommendation: "keep_best",
-    summary: "기존 베스트 점수가 더 높습니다.",
-    reasons
-  };
-}
+  // --- Penalty ---
+  const penalty = challengerFrequency >= 2.0 ? (challengerFrequency - 2.0) * 10 : 0;
 
-export function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+  // --- HS (Health Score) ---
+  const challengerHS = costScore + attrScore - penalty;
+  const championHS = 100;
+
+  // --- Winner ---
+  const winner = challengerHS > championHS ? "challenger" : "champion";
+
+  return {
+    championCPPV,
+    challengerCPPV,
+    championSaveRate,
+    challengerSaveRate,
+    championFrequency,
+    challengerFrequency,
+    costScore,
+    attrScore,
+    penalty,
+    challengerHS,
+    championHS,
+    winner,
+  };
 }

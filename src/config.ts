@@ -4,8 +4,7 @@ export type MetaConfig = {
   accessToken: string;
   graphVersion: string;
   adAccountId?: string;
-  bestAdSetId?: string;
-  newAdSetId?: string;
+  adSetId?: string;
   slackWebhookUrl?: string;
 };
 
@@ -19,8 +18,7 @@ export function loadMetaConfig(env: NodeJS.ProcessEnv = process.env): MetaConfig
     accessToken,
     graphVersion: env.META_GRAPH_VERSION ?? "v25.0",
     adAccountId: env.META_AD_ACCOUNT_ID,
-    bestAdSetId: env.META_BEST_ADSET_ID,
-    newAdSetId: env.META_NEW_ADSET_ID,
+    adSetId: env.META_ADSET_ID,
     slackWebhookUrl: env.SLACK_WEBHOOK_URL
   };
 }
@@ -32,20 +30,16 @@ export function requireSlackWebhookUrl(config: MetaConfig): string {
   return config.slackWebhookUrl;
 }
 
-export function requireAutoReviewConfig(config: MetaConfig): Required<Pick<MetaConfig, "adAccountId" | "bestAdSetId" | "newAdSetId">> {
+export function requireAdSetConfig(config: MetaConfig): Required<Pick<MetaConfig, "adAccountId" | "adSetId">> {
   if (!config.adAccountId) {
     throw new Error("META_AD_ACCOUNT_ID is required for automatic review.");
   }
-  if (!config.bestAdSetId) {
-    throw new Error("META_BEST_ADSET_ID is required for automatic review.");
-  }
-  if (!config.newAdSetId) {
-    throw new Error("META_NEW_ADSET_ID is required for automatic review.");
+  if (!config.adSetId) {
+    throw new Error("META_ADSET_ID is required for automatic review.");
   }
 
   return {
     adAccountId: config.adAccountId,
-    bestAdSetId: config.bestAdSetId,
-    newAdSetId: config.newAdSetId
+    adSetId: config.adSetId
   };
 }
