@@ -60,13 +60,13 @@ test("renders Slack payload with score for full deathmatch report", () => {
   const report = fullReport();
   const payload = renderSlackPayload(report);
 
-  assert.match(payload.text, /Meta Ads 데스매치 리포트/);
+  assert.match(payload.text, /Meta Ads 리포트/);
   assert.ok(payload.blocks.length >= 6);
   const blockText = JSON.stringify(payload.blocks);
   assert.match(blockText, /챔피언/);
   assert.match(blockText, /챌린저/);
   assert.match(blockText, /기준점 100점/);
-  assert.match(blockText, /AI 결단 플랜/);
+  assert.match(blockText, /점수 산출식/);
   assert.match(blockText, /일별 성과/);
 });
 
@@ -85,7 +85,7 @@ test("renders Slack payload for single ad (no challenger, null score)", () => {
   });
 
   const payload = renderSlackPayload(report);
-  assert.match(payload.text, /Meta Ads 데스매치 리포트/);
+  assert.match(payload.text, /Meta Ads 리포트/);
   const blockText = JSON.stringify(payload.blocks);
   assert.match(blockText, /단일 광고만 운영/);
   assert.match(blockText, /챔피언/);
