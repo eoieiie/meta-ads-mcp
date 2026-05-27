@@ -110,7 +110,7 @@ function buildCostFormula(s: DeathmatchScore): string {
   if (cppvC > 0 && cppvCh === 0) {
     return `① CostScore: 챌린저 방문 0 → 0점 (최소)`;
   }
-  return `① CostScore = min((${Math.round(cppvC).toLocaleString()} ÷ ${Math.round(cppvCh).toLocaleString()}) × 60, 120) = ${s.costScore.toFixed(1)}점`;
+  return `① CostScore = min((${Math.round(cppvC).toLocaleString()} ÷ ${Math.round(cppvCh).toLocaleString()}) × 60, 120) = ${s.costScore.toFixed(1)}점\n   (×60=기준. CPPV 동등=60점, 챌린저 2배 효율=120점 최대)`;
 }
 
 function buildAttrFormula(s: DeathmatchScore): string {
@@ -122,7 +122,7 @@ function buildAttrFormula(s: DeathmatchScore): string {
   if (srC === 0 && srCh > 0) {
     return `② AttrScore: 챔피언 저장+공유 0, 챌린저 있음 → 40점`;
   }
-  return `② AttrScore = min((${formatPercent(srCh)} ÷ ${formatPercent(srC)}) × 40, 80) = ${s.attrScore.toFixed(1)}점`;
+  return `② AttrScore = min((${formatPercent(srCh)} ÷ ${formatPercent(srC)}) × 40, 80) = ${s.attrScore.toFixed(1)}점\n   (×40=기준. 저장공유율 동등=40점, 챌린저 2배 높음=80점 최대)`;
 }
 
 function buildPenaltyFormula(s: DeathmatchScore): string {
@@ -130,7 +130,7 @@ function buildPenaltyFormula(s: DeathmatchScore): string {
   if (freq < 2.0) {
     return `③ Penalty: Frequency ${freq.toFixed(1)} (2.0 미만) → 0점`;
   }
-  return `③ Penalty = (${freq.toFixed(1)} - 2.0) × 10 = ${s.penalty.toFixed(1)}점`;
+  return `③ Penalty = (${freq.toFixed(1)} - 2.0) × 10 = ${s.penalty.toFixed(1)}점\n   (2.0 넘는 초과분 ×10 차감. 높을수록 과노출)`;
 }
 
 function dailyLines(review: DeathmatchReport): string {
