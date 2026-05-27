@@ -14,9 +14,9 @@ export function calculateDeathmatchScore(
       ? 0
       : challenger.spendKrw / challenger.instagramProfileVisits;
 
-  // --- SaveRate ---
-  const championSaveRate = champion.reach === 0 ? 0 : champion.saves / champion.reach;
-  const challengerSaveRate = challenger.reach === 0 ? 0 : challenger.saves / challenger.reach;
+  // --- SaveShareRate (저장 + 공유) ---
+  const championSaveRate = champion.reach === 0 ? 0 : (champion.saves + champion.shares) / champion.reach;
+  const challengerSaveRate = challenger.reach === 0 ? 0 : (challenger.saves + challenger.shares) / challenger.reach;
 
   // --- Frequency ---
   const championFrequency = champion.reach === 0 ? 0 : champion.impressions / champion.reach;
@@ -40,7 +40,7 @@ export function calculateDeathmatchScore(
     attrScore = Math.min((challengerSaveRate / championSaveRate) * 40, 80);
   } else {
     // championSaveRate === 0
-    attrScore = challenger.saves > 0 ? 40 : 0;
+    attrScore = (challenger.saves + challenger.shares) > 0 ? 40 : 0;
   }
 
   // --- Penalty ---

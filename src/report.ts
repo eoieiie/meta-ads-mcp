@@ -20,8 +20,8 @@ export function renderDeathmatchReport(review: DeathmatchReport): string {
     lines.push(
       "",
       "[상대 평가 점수]",
-      `챔피언: 기준점 100점 (CPPV: ${formatWon(s.championCPPV)} | 저장률: ${formatPercent(s.championSaveRate)})`,
-      `챌린저: 총점 ${s.challengerHS.toFixed(1)}점 (CPPV: ${formatWon(s.challengerCPPV)} | 저장률: ${formatPercent(s.challengerSaveRate)})`,
+      `챔피언: 기준점 100점 (CPPV: ${formatWon(s.championCPPV)} | 저장공유율: ${formatPercent(s.championSaveRate)})`,
+      `챌린저: 총점 ${s.challengerHS.toFixed(1)}점 (CPPV: ${formatWon(s.challengerCPPV)} | 저장공유율: ${formatPercent(s.challengerSaveRate)})`,
       `  - 세부: 방문 단가 ${s.costScore.toFixed(1)}점 + 매력도 ${s.attrScore.toFixed(1)}점 - 빈도 페널티 ${s.penalty.toFixed(1)}점`,
       "",
       ...renderScoreFormula(s).split("\n"),
@@ -72,8 +72,8 @@ function buildCostFormula(s: DeathmatchScore): string {
 function buildAttrFormula(s: DeathmatchScore): string {
   const srC = s.championSaveRate;
   const srCh = s.challengerSaveRate;
-  if (srC === 0 && srCh === 0) return `② AttrScore: 양쪽 저장 없음 → 0점`;
-  if (srC === 0 && srCh > 0) return `② AttrScore: 챔피언 저장 0회, 챌린저 저장 있음 → 40점`;
+  if (srC === 0 && srCh === 0) return `② AttrScore: 양쪽 저장+공유 0 → 0점`;
+  if (srC === 0 && srCh > 0) return `② AttrScore: 챔피언 저장+공유 0, 챌린저 있음 → 40점`;
   return `② AttrScore = min((${formatPercent(srCh)} ÷ ${formatPercent(srC)}) × 40, 80) = ${s.attrScore.toFixed(1)}점`;
 }
 
