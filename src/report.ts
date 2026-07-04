@@ -20,9 +20,9 @@ export function renderDeathmatchReport(review: DeathmatchReport): string {
     lines.push(
       "",
       "[상대 평가 점수]",
-      `챔피언: 기준점 100점 (CPPV: ${formatWon(s.championCPPV)} | 저장공유율: ${formatPercent(s.championSaveRate)})`,
-      `챌린저: 총점 ${s.challengerHS.toFixed(1)}점 (CPPV: ${formatWon(s.challengerCPPV)} | 저장공유율: ${formatPercent(s.challengerSaveRate)})`,
-      `  - 세부: 방문 단가 ${s.costScore.toFixed(1)}점 + 매력도 ${s.attrScore.toFixed(1)}점 - 빈도 페널티 ${s.penalty.toFixed(1)}점`,
+      `챔피언: 기준점 100점 (CPPV: ${formatWon(s.championCPPV)} | 저장공유율: ${formatPercent(s.championSaveRate)} | CTR: ${formatPercent(s.championCTR)})`,
+      `챌린저: 총점 ${s.challengerHS.toFixed(1)}점 (CPPV: ${formatWon(s.challengerCPPV)} | 저장공유율: ${formatPercent(s.challengerSaveRate)} | CTR: ${formatPercent(s.challengerCTR)})`,
+      `  - 세부: 방문 단가 ${s.costScore.toFixed(1)}점 + 매력도 ${s.attrScore.toFixed(1)}점 + 클릭률 ${s.ctrScore.toFixed(1)}점 - 빈도 페널티 ${s.penalty.toFixed(1)}점`,
       "",
       ...renderScoreFormula(s).split("\n"),
     );
@@ -55,8 +55,9 @@ function renderScoreFormula(s: DeathmatchScore): string {
     "[점수 산출식]",
     buildCostFormula(s),
     buildAttrFormula(s),
+    buildCTRFormula(s),
     buildPenaltyFormula(s),
-    `Challenger HS = ${s.costScore.toFixed(1)} + ${s.attrScore.toFixed(1)} - ${s.penalty.toFixed(1)} = ${s.challengerHS.toFixed(1)}점 (vs Champion 100점)`,
+    `Challenger HS = ${s.costScore.toFixed(1)} + ${s.attrScore.toFixed(1)} + ${s.ctrScore.toFixed(1)} - ${s.penalty.toFixed(1)} = ${s.challengerHS.toFixed(1)}점 (vs Champion 100점)`,
   ].join("\n");
 }
 
@@ -73,14 +74,23 @@ function buildAttrFormula(s: DeathmatchScore): string {
   const srC = s.championSaveRate;
   const srCh = s.challengerSaveRate;
   if (srC === 0 && srCh === 0) return `② AttrScore: 양쪽 저장+공유 0 → 0점`;
-  if (srC === 0 && srCh > 0) return `② AttrScore: 챔피언 저장+공유 0, 챌린저 있음 → 40점`;
-  return `② AttrScore = min((${formatPercent(srCh)} ÷ ${formatPercent(srC)}) × 40, 80) = ${s.attrScore.toFixed(1)}점\n   (×40=기준. 저장공유율 동등=40점, 챌린저 2배 높음=80점 최대)`;
+  if (srC === 0 && srCh > 0) return `② AttrScore: 챔피언 저장+공유 0, 챌린저 있음 → 20점`;
+  return `② AttrScore = min((${formatPercent(srCh)} ÷ ${formatPercent(srC)}) × 20, 40) = ${s.attrScore.toFixed(1)}점\n   (×20=기준. 저장공유율 동등=20점, 챌린저 2배 높음=40점 최대)`;
+}
+
+function buildCTRFormula(s: DeathmatchScore): string {
+  const ctrC = s.championCTR;
+  const ctrCh = s.challengerCTR;
+  if (ctrC === 0 && ctrCh === 0) return `③ CTRScore: 양쪽 클릭 0 → 20점 (중립)`;
+  if (ctrC === 0 && ctrCh > 0) return `③ CTRScore: 챔피언 클릭 0 → 40점 (최대)`;
+  if (ctrC > 0 && ctrCh === 0) return `③ CTRScore: 챌린저 클릭 0 → 0점 (최소)`;
+  return `③ CTRScore = min((${formatPercent(ctrCh)} ÷ ${formatPercent(ctrC)}) × 20, 40) = ${s.ctrScore.toFixed(1)}점\n   (×20=기준. CTR 동등=20점, 챌린저 2배 높음=40점 최대)`;
 }
 
 function buildPenaltyFormula(s: DeathmatchScore): string {
   const freq = s.challengerFrequency;
-  if (freq < 2.0) return `③ Penalty: Frequency ${freq.toFixed(1)} (2.0 미만) → 0점`;
-  return `③ Penalty = (${freq.toFixed(1)} - 2.0) × 10 = ${s.penalty.toFixed(1)}점\n   (2.0 넘는 초과분 ×10 차감. 높을수록 과노출)`;
+  if (freq < 2.0) return `④ Penalty: Frequency ${freq.toFixed(1)} (2.0 미만) → 0점`;
+  return `④ Penalty = (${freq.toFixed(1)} - 2.0) × 10 = ${s.penalty.toFixed(1)}점\n   (2.0 넘는 초과분 ×10 차감. 높을수록 과노출)`;
 }
 
 function formatKoreanDate(isoDate: string): string {
