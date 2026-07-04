@@ -43,8 +43,8 @@ test("createDeathmatchReview selects champion (oldest) and challenger (newest) f
   const client = new MockMetaClient({
     ads,
     adMetrics: new Map([
-      ["old-1", { spendKrw: 10000, impressions: 5000, reach: 3000, instagramProfileVisits: 100, saves: 50, shares: 5, likes: 30, actions: [], raw: null }],
-      ["new-2", { spendKrw: 5000, impressions: 3000, reach: 2000, instagramProfileVisits: 80, saves: 40, shares: 3, likes: 20, actions: [], raw: null }],
+      ["old-1", { spendKrw: 10000, impressions: 5000, reach: 3000, instagramProfileVisits: 100, saves: 50, shares: 5, likes: 30, linkClicks: 200, actions: [], raw: null }],
+      ["new-2", { spendKrw: 5000, impressions: 3000, reach: 2000, instagramProfileVisits: 80, saves: 40, shares: 3, likes: 20, linkClicks: 100, actions: [], raw: null }],
     ]),
   });
 
@@ -68,7 +68,7 @@ test("createDeathmatchReview returns champion only when 1 ACTIVE ad exists", asy
   const client = new MockMetaClient({
     ads,
     adMetrics: new Map([
-      ["ad-1", { spendKrw: 10000, impressions: 5000, reach: 3000, instagramProfileVisits: 100, saves: 50, shares: 5, likes: 30, actions: [], raw: null }],
+      ["ad-1", { spendKrw: 10000, impressions: 5000, reach: 3000, instagramProfileVisits: 100, saves: 50, shares: 5, likes: 30, linkClicks: 200, actions: [], raw: null }],
     ]),
   });
 

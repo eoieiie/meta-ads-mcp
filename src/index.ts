@@ -105,6 +105,7 @@ server.registerTool(
       saves: m.saves ?? 0,
       likes: m.likes ?? 0,
       shares: 0,
+      linkClicks: 0,
       actions: [] as Array<{ action_type: string; value: string }>,
       raw: null
     });

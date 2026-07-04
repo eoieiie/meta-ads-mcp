@@ -9,6 +9,7 @@ const champion: AdInsightsMetrics = {
   saves: 30,
   shares: 5,
   likes: 50,
+  linkClicks: 200,
   actions: [],
   raw: null,
 };
@@ -21,6 +22,7 @@ const challenger: AdInsightsMetrics = {
   saves: 8,
   shares: 2,
   likes: 15,
+  linkClicks: 50,
   actions: [],
   raw: null,
 };

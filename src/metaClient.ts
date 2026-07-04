@@ -141,6 +141,7 @@ function parseInsightsRow(row: Record<string, unknown>, raw: unknown): AdInsight
     saves: sumActions(actions, (actionType) => actionType.includes("save")),
     shares: sumActions(actions, (actionType) => actionType === "post" || actionType.includes("share")),
     likes: sumActions(actions, (actionType) => actionType === "post_reaction" || actionType === "like" || actionType.includes("reaction")),
+    linkClicks: sumActions(actions, (actionType) => actionType === "link_click"),
     impressions: parseNumber(row.impressions),
     reach: parseNumber(row.reach),
     actions,

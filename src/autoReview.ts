@@ -107,6 +107,7 @@ function emptyDaily(date: string): AdInsightsMetrics {
     saves: 0,
     shares: 0,
     likes: 0,
+    linkClicks: 0,
     actions: [],
     raw: null
   };

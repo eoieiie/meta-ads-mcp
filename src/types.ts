@@ -28,6 +28,7 @@ export type AdInsightsMetrics = {
   saves: number;
   shares: number;
   likes: number;
+  linkClicks: number;
   impressions: number;
   reach: number;
   actions: Array<{ action_type: string; value: string }>;
@@ -39,10 +40,13 @@ export type DeathmatchScore = {
   challengerCPPV: number;
   championSaveRate: number;
   challengerSaveRate: number;
+  championCTR: number;
+  challengerCTR: number;
   championFrequency: number;
   challengerFrequency: number;
   costScore: number;
   attrScore: number;
+  ctrScore: number;
   penalty: number;
   challengerHS: number;
   championHS: number;
