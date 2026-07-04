@@ -54,21 +54,36 @@ Meta Ads Insights API가 반환하는 원시 값으로부터 세 가지 핵심 �
 > 숫자 설명: **×60** = 기준점 (CPPV 동등 시 60점). **최대 120** = 2배 효율 시 만점.
 > 60점 = 동등, 60~120 = 우세, 60 미만 = 열세.
 
-**② AttrScore (매력도 점수) — 최대 80점**
+**② AttrScore (매력도 점수) — 최대 40점**
 
 챌린저 게시글이 챔피언 대비 저장+공유율이 얼마나 높은지 평가합니다.
 
-- **챔피언 저장공유율 > 0** → `min((챌린저저장공유율 ÷ 챔피언저장공유율) × 40, 80)`
-- **챔피언 저장공유율 = 0, 챌린저 저장+공유 > 0** → 40점
+- **챔피언 저장공유율 > 0** → `min((챌린저저장공유율 ÷ 챔피언저장공유율) × 20, 40)`
+- **챔피언 저장공유율 = 0, 챌린저 저장+공유 > 0** → 20점
 - **챔피언 저장공유율 = 0, 챌린저 저장+공유 = 0** → 0점
 
-> 예: 챔피언 저장공유율 1.0%, 챌린저 저장공유율 2.0% → (2.0÷1.0)×40 = 80점 (만점!)
-> 예: 챔피언 저장공유율 1.0%, 챌린저 저장공유율 0.5% → (0.5÷1.0)×40 = 20점
+> 예: 챔피언 저장공유율 1.0%, 챌린저 저장공유율 2.0% → (2.0÷1.0)×20 = 40점 (만점!)
+> 예: 챔피언 저장공유율 1.0%, 챌린저 저장공유율 0.5% → (0.5÷1.0)×20 = 10점
 
-> 숫자 설명: **×40** = 기준점 (저장공유율 동등 시 40점). **최대 80** = 2배 높으면 만점.
-> 40점 = 동등, 40~80 = 우세, 40 미만 = 열세.
+> 숫자 설명: **×20** = 기준점 (저장공유율 동등 시 20점). **최대 40** = 2배 높으면 만점.
+> 20점 = 동등, 20~40 = 우세, 20 미만 = 열세.
 
-**③ Penalty (광고 피로도 페널티) — 차감점 (무제한)**
+**③ CTRScore (클릭률 점수) — 최대 40점**
+
+챌린저 광고의 클릭률(CTR = link_click ÷ impressions)이 챔피언 대비 얼마나 높은지 평가합니다. CTR은 Meta가 광고 효율성을 판단하는 핵심 지표입니다.
+
+- **양쪽 CTR 모두 0** → 20점 (중립. 클릭 데이터 없음)
+- **챔피언 CTR = 0, 챌린저 CTR > 0** → 40점 (챌린저 최대)
+- **챔피언 CTR > 0, 챌린저 CTR = 0** → 0점 (챌린저 최소)
+- **양쪽 CTR > 0** → `min((챌린저CTR ÷ 챔피언CTR) × 20, 40)`
+
+> 예: 챔피언 CTR 5.0%, 챌린저 CTR 10.0% → (10.0÷5.0)×20 = 40점 (만점!)
+> 예: 챔피언 CTR 10.0%, 챌린저 CTR 5.0% → (5.0÷10.0)×20 = 10점
+
+> 숫자 설명: **×20** = 기준점 (CTR 동등 시 20점). **최대 40** = 2배 높으면 만점.
+> 20점 = 동등, 20~40 = 우세, 20 미만 = 열세.
+
+**④ Penalty (광고 피로도 페널티) — 차감점 (무제한)**
 
 챌린저 광고의 Frequency가 2.0을 넘으면 과도한 광노출로 점수를 차감합니다.
 
@@ -81,15 +96,15 @@ Meta Ads Insights API가 반환하는 원시 값으로부터 세 가지 핵심 �
 > 숫자 설명: **기준 2.0** = 같은 사람이 평균 2회 이상 보면 과노출.
 > **×10** = 초과분 1당 10점 차감.
 
-> **왜 60+40=100인가?** CostScore 기준 60점 + AttrScore 기준 40점 = 100점.
-> 챔피언 HS가 100점이므로, 두 영역 모두 동등해야 100점. 하나라도 잘하면 100을 넘어 승리.
+> **왜 60+20+20=100인가?** CostScore 기준 60점 + AttrScore 기준 20점 + CTRScore 기준 20점 = 100점.
+> 챔피언 HS가 100점이므로, 세 영역 모두 동등해야 100점. 하나라도 잘하면 100을 넘어 승리.
 > 즉, 100점 = 챔피언을 이기기 위한 마지노선.
 
 #### 3단계: 최종 점수 및 승자
 
 | 항목 | 계산식 |
 |---|---|
-| **Challenger HS** | `CostScore + AttrScore - Penalty` |
+| **Challenger HS** | `CostScore + AttrScore + CTRScore - Penalty` |
 | **Champion HS** | 항상 **100점** (절대 기준) |
 | **승자** | `Challenger HS > 100` → 🥊 **챌린저 승리** / 그 외 → 👑 **챔피언 유지** |
 
@@ -102,16 +117,19 @@ instagramProfileVisits     100명           100명
 saves + shares           50+30=80회     100+60=160회
 impressions              15,000회        10,000회
 reach                      5,000명         5,000명
+link_click                 750회           800회
 
 CPPV                  100원/방문        50원/방문
 SaveShareRate          80/5000=1.6%    160/5000=3.2%
+CTR (클릭률)          750/15000=5.0%   800/10000=8.0%
 Frequency                  3.0             2.0
 
 CostScore  = min((100÷50)×60, 120) = 120점  ← 챌린저 방문 단가 2배 효율
-AttrScore  = min((3.2÷1.6)×40, 80) =  80점  ← 챌린저 저장공유율 2배 높음
+AttrScore  = min((3.2÷1.6)×20, 40) =  40점  ← 챌린저 저장공유율 2배 높음 (비중 절반)
+CTRScore   = min((8.0÷5.0)×20, 40) =  32점  ← 챌린저 CTR 1.6배 높음
 Penalty    = (3.0-2.0)×10          =  10점  ← 챌린저 빈도 3.0으로 페널티
 
-Challenger HS = 120 + 80 - 10 = 190점  → 챌린저 승리!
+Challenger HS = 120 + 40 + 32 - 10 = 182점  → 챌린저 승리!
 Champion HS   = 100점 (고정)
 ```
 
@@ -244,20 +262,34 @@ Evaluates how cost-efficient the challenger is compared to the champion.
 > Number breakdown: **×60** = baseline (equal CPPV = 60 pts). **Max 120** = 2x efficiency = full score.
 > 60 = equal, 60~120 = ahead, below 60 = behind.
 
-**② AttrScore (Attractiveness Score) — Max 80**
+**② AttrScore (Attractiveness Score) — Max 40**
 
 Evaluates how engaging the challenger's content is compared to the champion's, using a combined **saves + shares** rate.
 
-- **Champion SaveShareRate > 0** → `min((challengerSaveShareRate ÷ championSaveShareRate) × 40, 80)`
-- **Champion SaveShareRate = 0, Challenger saves+shares > 0** → 40
+- **Champion SaveShareRate > 0** → `min((challengerSaveShareRate ÷ championSaveShareRate) × 20, 40)`
+- **Champion SaveShareRate = 0, Challenger saves+shares > 0** → 20
 - **Champion SaveShareRate = 0, Challenger saves+shares = 0** → 0
 
-> Example: Champion SaveShareRate 1.0%, Challenger SaveShareRate 2.0% → (2.0÷1.0)×40 = 80 (max score!)
-> Example: Champion SaveShareRate 1.0%, Challenger SaveShareRate 0.5% → (0.5÷1.0)×40 = 20
-> Number breakdown: **×40** = baseline (equal rates = 40 pts). **Max 80** = 2x better = full score.
-> 40 = equal, 40~80 = ahead, below 40 = behind.
+> Example: Champion SaveShareRate 1.0%, Challenger SaveShareRate 2.0% → (2.0÷1.0)×20 = 40 (max score!)
+> Example: Champion SaveShareRate 1.0%, Challenger SaveShareRate 0.5% → (0.5÷1.0)×20 = 10
+> Number breakdown: **×20** = baseline (equal rates = 20 pts). **Max 40** = 2x better = full score.
+> 20 = equal, 20~40 = ahead, below 20 = behind.
 
-**③ Penalty (Ad Fatigue Penalty) — Deduction (Unlimited)**
+**③ CTRScore (Click-Through Rate Score) — Max 40**
+
+Evaluates how effective the challenger's ad is at driving clicks compared to the champion's. CTR (link_clicks ÷ impressions) is Meta's primary efficiency signal.
+
+- **Both CTR = 0** → 20 (neutral — no click data)
+- **Champion CTR = 0, Challenger CTR > 0** → 40 (max for challenger)
+- **Champion CTR > 0, Challenger CTR = 0** → 0 (min for challenger)
+- **Both CTR > 0** → `min((challengerCTR ÷ championCTR) × 20, 40)`
+
+> Example: Champion CTR 5.0%, Challenger CTR 10.0% → (10.0÷5.0)×20 = 40 (max score!)
+> Example: Champion CTR 10.0%, Challenger CTR 5.0% → (5.0÷10.0)×20 = 10
+> Number breakdown: **×20** = baseline (equal CTR = 20 pts). **Max 40** = 2x better = full score.
+> 20 = equal, 20~40 = ahead, below 20 = behind.
+
+**④ Penalty (Ad Fatigue Penalty) — Deduction (Unlimited)**
 
 Penalizes the challenger if its frequency exceeds 2.0 (overexposure).
 
@@ -269,16 +301,16 @@ Penalizes the challenger if its frequency exceeds 2.0 (overexposure).
 > Number breakdown: **Threshold 2.0** = same person saw the ad >2x on average = overexposure.
 > **×10** = 10 pts deducted per unit above 2.0.
 
-> **Why 60+40=100?** CostScore baseline 60 + AttrScore baseline 40 = 100.
-> Champion HS is fixed at 100, so both areas must be "equal" to reach 100.
-> Any advantage in either area pushes past 100 → challenger wins.
+> **Why 60+20+20=100?** CostScore baseline 60 + AttrScore baseline 20 + CTRScore baseline 20 = 100.
+> Champion HS is fixed at 100, so all three areas must be "equal" to reach 100.
+> Any advantage in any area pushes past 100 → challenger wins.
 > In other words, 100 = the line to beat the champion.
 
 #### Stage 3: Final Health Score & Winner
 
 | Component | Formula |
 |---|---|
-| **Challenger HS** | `CostScore + AttrScore - Penalty` |
+| **Challenger HS** | `CostScore + AttrScore + CTRScore - Penalty` |
 | **Champion HS** | Always **100** (absolute baseline) |
 | **Winner** | `Challenger HS > 100` → 🥊 **Challenger wins** / Otherwise → 👑 **Champion retains** |
 
@@ -291,16 +323,19 @@ instagramProfileVisits     100              100
 saves + shares           50+30=80       100+60=160
 impressions              15,000           10,000
 reach                      5,000            5,000
+link_click                   750              800
 
 CPPV                  100KRW/visit     50KRW/visit
 SaveShareRate          80/5000=1.6%    160/5000=3.2%
+CTR (click rate)      750/15000=5.0%   800/10000=8.0%
 Frequency                  3.0              2.0
 
 CostScore  = min((100÷50)×60, 120) = 120  ← Challenger 2x more cost-efficient
-AttrScore  = min((3.2÷1.6)×40, 80) =  80  ← Challenger 2x higher save+share rate
+AttrScore  = min((3.2÷1.6)×20, 40) =  40  ← Challenger 2x higher save+share rate
+CTRScore   = min((8.0÷5.0)×20, 40) =  32  ← Challenger 1.6x higher CTR
 Penalty    = (3.0-2.0)×10          =  10  ← Challenger frequency 3.0
 
-Challenger HS = 120 + 80 - 10 = 190  → Challenger wins!
+Challenger HS = 120 + 40 + 32 - 10 = 182  → Challenger wins!
 Champion HS   = 100 (fixed)
 ```
 
