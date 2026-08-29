@@ -10,7 +10,7 @@ Meta API is accessed read-only. This server never creates, pauses, deletes, or m
 
 ### 개요
 
-Meta 광고 계정 내 **하나의 광고 세트(ad set)**에서 ACTIVE 상태인 광고 2개를 뽑아 챔피언(Champion)과 챌린저(Challenger)로 지정, 상대 평가 점수를 매기는 데스매치 시스템입니다.
+Meta 광고 계정 내 **하나의 광고 세트(ad set)**에서 ACTIVE 상태인 광고 2개를 뽑아 챔피언(Champion)과 챌린저(Challenger)로 지정, 상대 평가 점수를 매기는 데스매치 시스템.
 
 - **챔피언**: 광고 세트 내에서 `created_time`이 가장 오래된 ACTIVE 광고
 - **챌린저**: 광고 세트 내에서 `created_time`이 가장 최근인 ACTIVE 광고
